@@ -27,7 +27,7 @@ export function PatientDetailPage() {
   const { data: treatments } = useQuery({
     queryKey: ['treatments', patientId],
     queryFn: () => treatmentsApi.byPatient(patientId),
-    enabled: tab === 'soins' || tab === 'finance',
+    enabled: tab === 'finance',
   });
 
   const { data: finSummary } = useQuery({
@@ -139,9 +139,9 @@ export function PatientDetailPage() {
 
           <div className="p-6">
             {tab === 'identite' && <IdentiteTab patient={patient} />}
-            {tab === 'soins' && <SoinsTab treatments={treatments} />}
+            {tab === 'soins' && <TreatmentsTab patientId={patientId} />}
             {tab === 'schema' && <ToothChart patientId={patientId} />}
-            {tab === 'finance' && <FinanceTab summary={finSummary} treatments={treatments} />}
+            {tab === 'finance' && <FinanceTab summary={finSummary} treatments={treatments} patientId={patientId} />}
           </div>
         </div>
       </div>
@@ -195,54 +195,7 @@ function Field({ label, value, full }: { label: string; value?: string; full?: b
   );
 }
 
-function SoinsTab({ treatments }: { treatments?: any[] }) {
-  if (!treatments || treatments.length === 0) {
-    return <p TreatmentsTab patientId={patient.id} ">Aucun soin enregistré</p>;
-  }
-
-  return (
-    <div className="space-y-3">
-      {treatments.map((t) => (
-        <div key={t.id} className="border border-slate-200 rounded-lg p-4">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <div className="font-semibold text-sm">{formatDate(t.dateSoin)}</div>
-              {t.observations && (
-                <div className="text-xs text-slate-500 mt-1">{t.observations}</div>
-              )}
-            </div>
-          </div>
-          {t.acts?.length > 0 && (
-            <table className="w-full text-sm">
-              <thead className="text-xs text-slate-500 border-b border-slate-100">
-                <tr>
-                  <th className="text-left py-1">Acte</th>
-                  <th className="text-left py-1">Dents</th>
-                  <th className="text-right py-1">Coût</th>
-                  <th className="text-right py-1">Reçu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {t.acts.map((a: any) => (
-                  <tr key={a.id} className="border-b border-slate-50 last:border-0">
-                    <td className="py-1.5">{a.libelle}</td>
-                    <td className="py-1.5 text-slate-600">{a.dents || '—'}</td>
-                    <td className="py-1.5 text-right">{formatMoney(a.cout)} DT</td>
-                    <td className="py-1.5 text-right text-emerald-600">
-                      {formatMoney(a.montantRecu)} DT
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FinanceTab({ summary, treatments }: { summary?: any; treatments?: any[] }) {
+function FinanceTab({ summary, treatments, patientId }: { summary?: any; treatments?: any[]; patientId: number }) {
   if (!summary) return <Spinner />;
 
   return (
@@ -276,7 +229,7 @@ function FinanceTab({ summary, treatments }: { summary?: any; treatments?: any[]
         </div>
       </div>
 
-      <SoinsTab treatments={treatments} />
+      <TreatmentsTab patientId={patientId} />
     </div>
   );
 }
