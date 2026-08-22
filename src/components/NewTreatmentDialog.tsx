@@ -61,9 +61,9 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
     onSuccess: () => {
       toast.success('Soin enregistré avec succès !');
       queryClient.invalidateQueries({ queryKey: ['treatments', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['finSummary', patientId] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary', patientId] });
       onClose();
-      // Reset form
       setDateSoin(new Date().toISOString().split('T')[0]);
       setObservations('');
       setActs([{ libelle: '', dents: '', cout: 0, montant_recu: 0, mode_reglement: 'especes' }]);
@@ -90,8 +90,14 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   };
 
   const selectQuickAct = (index: number, act: { label: string; cost: number }) => {
-    updateAct(index, 'libelle', act.label);
-    updateAct(index, 'cout', act.cost);
+    const newActs = [...acts];
+    newActs[index] = {
+      ...newActs[index],
+      libelle: act.label,
+      cout: act.cost,
+      montant_recu: act.cost,
+    };
+    setActs(newActs);
   };
 
   const totalCost = acts.reduce((sum, a) => sum + (Number(a.cout) || 0), 0);
@@ -103,7 +109,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900" style={{ fontFamily: 'Fraunces, serif' }}>
@@ -111,18 +116,12 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
             </h2>
             <p className="text-sm text-slate-500 mt-1">Enregistrez les actes réalisés lors de la séance</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition"
-            aria-label="Fermer"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition" aria-label="Fermer">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
-        {/* Body scrollable */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Date */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
               Date du soin
@@ -135,7 +134,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
             />
           </div>
 
-          {/* Actes */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -168,33 +166,46 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                     )}
                   </div>
 
-                  {/* Libellé */}
+                  {/* Suggestions rapides EN PREMIER */}
                   <div>
-                    <label className="block text-xs text-slate-600 mb-1">Libellé</label>
+                    <label className="block text-xs text-slate-600 mb-2">
+                      💡 Actes courants (clique pour remplir libellé + coût)
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {COMMON_ACTS.map((qa) => {
+                        const isSelected = act.libelle === qa.label;
+                        return (
+                          <button
+                            key={qa.label}
+                            type="button"
+                            onClick={() => selectQuickAct(index, qa)}
+                            className="text-xs px-3 py-1.5 rounded-full border transition font-medium"
+                            style={
+                              isSelected
+                                ? { backgroundColor: '#dbeafe', borderColor: '#0e6ba8', color: '#0e6ba8' }
+                                : { backgroundColor: 'white', borderColor: '#e2e8f0', color: '#334155' }
+                            }
+                          >
+                            {qa.label}
+                            <span className="ml-1 text-slate-400">· {qa.cost} DT</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-600 mb-1">Libellé de l'acte</label>
                     <input
                       type="text"
                       value={act.libelle}
                       onChange={(e) => updateAct(index, 'libelle', e.target.value)}
-                      placeholder="Ex: Détartrage"
+                      placeholder="Sélectionne un acte courant ci-dessus, ou tape le tien"
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                     />
-                    {/* Suggestions rapides */}
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {COMMON_ACTS.map((qa) => (
-                        <button
-                          key={qa.label}
-                          type="button"
-                          onClick={() => selectQuickAct(index, qa)}
-                          className="text-xs px-2.5 py-1 bg-white border border-slate-200 rounded-full hover:border-primary-400 hover:bg-primary-50 hover:text-primary-700 transition"
-                        >
-                          {qa.label}
-                        </button>
-                      ))}
-                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Dents */}
                     <div>
                       <label className="block text-xs text-slate-600 mb-1">Dents concernées</label>
                       <input
@@ -205,8 +216,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                       />
                     </div>
-
-                    {/* Mode paiement */}
                     <div>
                       <label className="block text-xs text-slate-600 mb-1">Mode de règlement</label>
                       <select
@@ -224,7 +233,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Coût */}
                     <div>
                       <label className="block text-xs text-slate-600 mb-1">Coût (DT)</label>
                       <input
@@ -237,8 +245,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                       />
                     </div>
-
-                    {/* Montant reçu */}
                     <div>
                       <label className="block text-xs text-slate-600 mb-1">Montant reçu (DT)</label>
                       <input
@@ -257,7 +263,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
             </div>
           </div>
 
-          {/* Observations */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
               Observations (optionnel)
@@ -271,7 +276,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
             />
           </div>
 
-          {/* Résumé financier */}
           <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-xl p-4">
             <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Résumé</h3>
             <div className="grid grid-cols-3 gap-4">
@@ -293,7 +297,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
