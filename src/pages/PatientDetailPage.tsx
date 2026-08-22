@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { TreatmentsTab } from '../components/TreatmentsTab';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ArrowLeft, Edit, Trash2, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
@@ -196,7 +197,7 @@ function Field({ label, value, full }: { label: string; value?: string; full?: b
 
 function SoinsTab({ treatments }: { treatments?: any[] }) {
   if (!treatments || treatments.length === 0) {
-    return <p className="text-center py-8 text-sm text-slate-500">Aucun soin enregistré</p>;
+    return <p TreatmentsTab patientId={patient.id} ">Aucun soin enregistré</p>;
   }
 
   return (
