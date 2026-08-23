@@ -15,13 +15,13 @@ interface TreatmentAct {
   libelle: string;
   dents?: string;
   cout: number;
-  montant_recu: number;
-  mode_reglement?: string;
+  montantRecu: number;
+  modeReglement?: string;
 }
 
 interface Treatment {
   id: number;
-  date_soin: string;
+  dateSoin: string;
   observations?: string;
   acts: TreatmentAct[];
 }
@@ -95,7 +95,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
         <div className="space-y-4">
           {treatments.map((treatment) => {
             const totalCost = treatment.acts.reduce((s, a) => s + Number(a.cout), 0);
-            const totalPaid = treatment.acts.reduce((s, a) => s + Number(a.montant_recu), 0);
+            const totalPaid = treatment.acts.reduce((s, a) => s + Number(a.montantRecu), 0);
             const totalDue = totalCost - totalPaid;
 
             return (
@@ -111,7 +111,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                     </div>
                     <div>
                       <div className="font-semibold text-slate-900">
-                        {format(new Date(treatment.date_soin), 'EEEE d MMMM yyyy', { locale: fr })}
+                        {format(new Date(treatment.dateSoin), 'EEEE d MMMM yyyy', { locale: fr })}
                       </div>
                       <div className="text-xs text-slate-500">
                         {treatment.acts.length} acte{treatment.acts.length > 1 ? 's' : ''}
@@ -139,8 +139,8 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                           {Number(act.cout).toFixed(2)} DT
                         </div>
                         <div className="text-xs text-slate-500">
-                          {Number(act.montant_recu).toFixed(2)} DT payé
-                          {act.mode_reglement && ` (${PAYMENT_LABELS[act.mode_reglement] || act.mode_reglement})`}
+                          {Number(act.montantRecu).toFixed(2)} DT payé
+                          {act.modeReglement && ` (${PAYMENT_LABELS[act.modeReglement] || act.modeReglement})`}
                         </div>
                       </div>
                     </div>
