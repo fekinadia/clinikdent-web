@@ -17,6 +17,7 @@ interface TreatmentAct {
   montantRecu: number;
   modeReglement: string;
 }
+
 const COMMON_ACTS = [
   { label: 'Détartrage', cost: 90 },
   { label: 'Obturation (composite)', cost: 80 },
@@ -165,7 +166,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                     )}
                   </div>
 
-                  {/* Suggestions rapides EN PREMIER */}
+                  {/* Suggestions rapides - SANS les prix */}
                   <div>
                     <label className="block text-xs text-slate-600 mb-2">
                       💡 Actes courants (clique pour remplir libellé + coût)
@@ -186,7 +187,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                             }
                           >
                             {qa.label}
-                            <span className="ml-1 text-slate-400">· {qa.cost} DT</span>
                           </button>
                         );
                       })}
