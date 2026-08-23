@@ -14,10 +14,9 @@ interface TreatmentAct {
   libelle: string;
   dents: string;
   cout: number;
-  montant_recu: number;
-  mode_reglement: string;
+  montantRecu: number;
+  modeReglement: string;
 }
-
 const COMMON_ACTS = [
   { label: 'Détartrage', cost: 90 },
   { label: 'Obturation (composite)', cost: 80 },
@@ -42,7 +41,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   const [dateSoin, setDateSoin] = useState(new Date().toISOString().split('T')[0]);
   const [observations, setObservations] = useState('');
   const [acts, setActs] = useState<TreatmentAct[]>([
-    { libelle: '', dents: '', cout: 0, montant_recu: 0, mode_reglement: 'especes' },
+    { libelle: '', dents: '', cout: 0, montantRecu: 0, modeReglement: 'especes' },
   ]);
 
   const createTreatment = useMutation({
@@ -66,7 +65,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
       onClose();
       setDateSoin(new Date().toISOString().split('T')[0]);
       setObservations('');
-      setActs([{ libelle: '', dents: '', cout: 0, montant_recu: 0, mode_reglement: 'especes' }]);
+      setActs([{ libelle: '', dents: '', cout: 0, montantRecu: 0, modeReglement: 'especes' }]);
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.message || error?.message || "Erreur lors de la création";
@@ -75,7 +74,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   });
 
   const addAct = () => {
-    setActs([...acts, { libelle: '', dents: '', cout: 0, montant_recu: 0, mode_reglement: 'especes' }]);
+    setActs([...acts, { libelle: '', dents: '', cout: 0, montantRecu: 0, modeReglement: 'especes' }]);
   };
 
   const removeAct = (index: number) => {
@@ -95,13 +94,13 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
       ...newActs[index],
       libelle: act.label,
       cout: act.cost,
-      montant_recu: act.cost,
+      montantRecu: act.cost,
     };
     setActs(newActs);
   };
 
   const totalCost = acts.reduce((sum, a) => sum + (Number(a.cout) || 0), 0);
-  const totalPaid = acts.reduce((sum, a) => sum + (Number(a.montant_recu) || 0), 0);
+  const totalPaid = acts.reduce((sum, a) => sum + (Number(a.montantRecu) || 0), 0);
   const totalDue = totalCost - totalPaid;
 
   if (!isOpen) return null;
@@ -219,8 +218,8 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                     <div>
                       <label className="block text-xs text-slate-600 mb-1">Mode de règlement</label>
                       <select
-                        value={act.mode_reglement}
-                        onChange={(e) => updateAct(index, 'mode_reglement', e.target.value)}
+                        value={act.modeReglement}
+                        onChange={(e) => updateAct(index, 'modeReglement', e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
                       >
                         {PAYMENT_MODES.map((pm) => (
@@ -251,8 +250,8 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                         type="number"
                         min="0"
                         step="0.5"
-                        value={act.montant_recu || ''}
-                        onChange={(e) => updateAct(index, 'montant_recu', parseFloat(e.target.value) || 0)}
+                        value={act.montantRecu || ''}
+                        onChange={(e) => updateAct(index, 'montantRecu', parseFloat(e.target.value) || 0)}
                         placeholder="0"
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                       />
