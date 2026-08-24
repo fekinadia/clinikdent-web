@@ -20,7 +20,13 @@ export function NewPatientDialog({ open, onClose }: Props) {
   });
 
   const mutation = useMutation({
-    mutationFn: () => patientsApi.create(form),
+    mutationFn: () => patientsApi.create({
+      ...form,
+      // Le backend valide dateNaissance avec @IsDateString() : une chaîne vide
+      // (champ laissé vide dans le formulaire) est rejetée avec une 400,
+      // contrairement à undefined qui est accepté par @IsOptional().
+      dateNaissance: form.dateNaissance || undefined,
+    }),
     onSuccess: (patient) => {
       toast.success('Patient créé');
       qc.invalidateQueries({ queryKey: ['patients'] });
@@ -56,12 +62,12 @@ export function NewPatientDialog({ open, onClose }: Props) {
             <div>
               <label className="label">Prénom *</label>
               <input className="input" required value={form.prenom}
-                     onChange={(e) => setForm({ ...form, prenom: e.target.value })} />
+                onChange={(e) => setForm({ ...form, prenom: e.target.value })} />
             </div>
             <div>
               <label className="label">Nom *</label>
               <input className="input" required value={form.nom}
-                     onChange={(e) => setForm({ ...form, nom: e.target.value })} />
+                onChange={(e) => setForm({ ...form, nom: e.target.value })} />
             </div>
           </div>
 
@@ -69,12 +75,12 @@ export function NewPatientDialog({ open, onClose }: Props) {
             <div>
               <label className="label">Date de naissance</label>
               <input type="date" className="input" value={form.dateNaissance}
-                     onChange={(e) => setForm({ ...form, dateNaissance: e.target.value })} />
+                onChange={(e) => setForm({ ...form, dateNaissance: e.target.value })} />
             </div>
             <div>
               <label className="label">Sexe</label>
               <select className="input" value={form.sexe}
-                      onChange={(e) => setForm({ ...form, sexe: e.target.value as 'M' | 'F' })}>
+                onChange={(e) => setForm({ ...form, sexe: e.target.value as 'M' | 'F' })}>
                 <option value="F">Femme</option>
                 <option value="M">Homme</option>
               </select>
@@ -84,13 +90,13 @@ export function NewPatientDialog({ open, onClose }: Props) {
           <div>
             <label className="label">GSM</label>
             <input className="input" placeholder="22 000 800" value={form.gsm}
-                   onChange={(e) => setForm({ ...form, gsm: e.target.value })} />
+              onChange={(e) => setForm({ ...form, gsm: e.target.value })} />
           </div>
 
           <div>
             <label className="label">Ville</label>
             <input className="input" placeholder="Sfax" value={form.ville}
-                   onChange={(e) => setForm({ ...form, ville: e.target.value })} />
+              onChange={(e) => setForm({ ...form, ville: e.target.value })} />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
