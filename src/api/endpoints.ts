@@ -4,6 +4,7 @@ import type {
   Patient,
   PatientWithDetails,
   PaginatedPatients,
+  PatientRecall,
   Appointment,
   Treatment,
   ToothState,
@@ -43,6 +44,11 @@ export const patientsApi = {
   delete: (id: number) => api.delete(`/patients/${id}`).then((r) => r.data),
 
   stats: () => api.get<{ total: number; ceMois: number }>('/patients/stats').then((r) => r.data),
+
+  recalls: (months?: number) =>
+    api
+      .get<PatientRecall[]>('/patients/recalls', { params: months ? { months } : undefined })
+      .then((r) => r.data),
 };
 
 // ===== APPOINTMENTS =====
