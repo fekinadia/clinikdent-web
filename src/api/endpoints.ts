@@ -89,6 +89,12 @@ export const treatmentsApi = {
         notes,
       })
       .then((r) => r.data),
+
+  recordPayment: (
+    actId: number,
+    data: { montant: number; modeReglement?: string; remarque?: string },
+  ) =>
+    api.patch(`/treatments/acts/${actId}/payment`, data).then((r) => r.data),
 };
 
 // ===== PRESCRIPTIONS =====
