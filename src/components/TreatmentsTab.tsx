@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { api } from '../api/client';
 import { NewTreatmentDialog } from './NewTreatmentDialog';
+import { RecordPaymentDialog } from './RecordPaymentDialog';
 
 interface TreatmentsTabProps {
   patientId: number;
@@ -16,6 +17,7 @@ interface TreatmentAct {
   dents?: string;
   cout: number;
   montantRecu: number;
+  remise?: number;
   modeReglement?: string;
 }
 
@@ -36,6 +38,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [payingAct, setPayingAct] = useState<TreatmentAct | null>(null);
 
   const { data: treatments = [], isLoading } = useQuery<Treatment[]>({
     queryKey: ['treatments', patientId],
@@ -126,25 +129,38 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
 
                 {/* Liste des actes */}
                 <div className="space-y-2">
-                  {treatment.acts.map((act) => (
-                    <div key={act.id} className="flex items-center justify-between py-2">
-                      <div className="flex-1">
-                        <div className="font-medium text-slate-900">{act.libelle}</div>
-                        {act.dents && (
-                          <div className="text-xs text-slate-500 mt-0.5">Dents : {act.dents}</div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-slate-900">
-                          {Number(act.cout).toFixed(2)} DT
+                  {treatment.acts.map((act) => {
+                    const reste = Number(act.cout) - Number(act.montantRecu) - Number(act.remise || 0);
+                    return (
+                      <div key={act.id} className="flex items-center justify-between py-2">
+                        <div className="flex-1">
+                          <div className="font-medium text-slate-900">{act.libelle}</div>
+                          {act.dents && (
+                            <div className="text-xs text-slate-500 mt-0.5">Dents : {act.dents}</div>
+                          )}
                         </div>
-                        <div className="text-xs text-slate-500">
-                          {Number(act.montantRecu).toFixed(2)} DT payé
-                          {act.modeReglement && ` (${PAYMENT_LABELS[act.modeReglement] || act.modeReglement})`}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="text-sm font-medium text-slate-900">
+                              {Number(act.cout).toFixed(2)} DT
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {Number(act.montantRecu).toFixed(2)} DT payé
+                              {act.modeReglement && ` (${PAYMENT_LABELS[act.modeReglement] || act.modeReglement})`}
+                            </div>
+                          </div>
+                          {reste > 0.01 && (
+                            <button
+                              onClick={() => setPayingAct(act)}
+                              className="px-3 py-1.5 text-xs font-medium text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition whitespace-nowrap"
+                            >
+                              Encaisser
+                            </button>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Résumé financier */}
@@ -176,12 +192,22 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal nouveau soin */}
       <NewTreatmentDialog
         patientId={patientId}
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
       />
+
+      {/* Modal encaissement */}
+      {payingAct && (
+        <RecordPaymentDialog
+          key={payingAct.id}
+          patientId={patientId}
+          act={payingAct}
+          onClose={() => setPayingAct(null)}
+        />
+      )}
     </div>
   );
 }
