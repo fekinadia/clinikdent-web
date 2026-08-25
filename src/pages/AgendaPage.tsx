@@ -6,6 +6,7 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO }
 import { fr } from 'date-fns/locale';
 import { appointmentsApi } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
+import { NewAppointmentDialog } from '@/components/NewAppointmentDialog';
 
 const HOURS = Array.from({ length: 22 }, (_, i) => {
   const h = 8 + Math.floor(i / 2);
@@ -15,6 +16,7 @@ const HOURS = Array.from({ length: 22 }, (_, i) => {
 
 export function AgendaPage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
 
@@ -55,7 +57,7 @@ export function AgendaPage() {
           >
             <ChevronRight size={18} />
           </button>
-          <button className="btn-primary ml-2">
+          <button className="btn-primary ml-2" onClick={() => setIsDialogOpen(true)}>
             <Plus size={16} /> Nouveau RDV
           </button>
         </div>
@@ -137,6 +139,8 @@ export function AgendaPage() {
           )}
         </div>
       </div>
+
+      <NewAppointmentDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} />
     </>
   );
 }
