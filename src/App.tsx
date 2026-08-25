@@ -9,6 +9,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { PatientsListPage } from '@/pages/PatientsListPage';
 import { PatientDetailPage } from '@/pages/PatientDetailPage';
 import { AgendaPage } from '@/pages/AgendaPage';
+import { RecallsPage } from '@/pages/RecallsPage';
 import {
   TreatmentsPage,
   PrescriptionsPage,
@@ -62,6 +63,7 @@ export function App() {
             <Route path="patients" element={<PatientsListPage />} />
             <Route path="patients/:id" element={<PatientDetailPage />} />
             <Route path="agenda" element={<AgendaPage />} />
+            <Route path="recalls" element={<RecallsPage />} />
             <Route path="treatments" element={<TreatmentsPage />} />
             <Route path="prescriptions" element={<PrescriptionsPage />} />
             <Route path="finance" element={<FinancePage />} />
