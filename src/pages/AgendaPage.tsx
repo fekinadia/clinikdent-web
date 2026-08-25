@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { appointmentsApi } from '@/api/endpoints';
+import { appointmentsApi, patientsApi } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
 import { NewAppointmentDialog } from '@/components/NewAppointmentDialog';
+import type { Patient } from '@/types';
 
 const HOURS = Array.from({ length: 22 }, (_, i) => {
   const h = 8 + Math.floor(i / 2);
@@ -17,6 +18,8 @@ const HOURS = Array.from({ length: 22 }, (_, i) => {
 export function AgendaPage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogPatient, setDialogPatient] = useState<Patient | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
 
@@ -28,6 +31,41 @@ export function AgendaPage() {
         dateFin: addDays(weekStart, 6).toISOString(),
       }),
   });
+
+  // Ouvre automatiquement le dialogue avec un patient présélectionné quand on
+  // arrive depuis /agenda?patientId=123 (ex. bouton "Créer RDV" des Rappels).
+  useEffect(() => {
+    const patientId = searchParams.get('patientId');
+    if (!patientId) return;
+
+    let cancelled = false;
+    patientsApi
+      .get(Number(patientId))
+      .then((patient) => {
+        if (cancelled) return;
+        setDialogPatient(patient);
+        setIsDialogOpen(true);
+      })
+      .catch(() => {
+        // patient introuvable : on ignore silencieusement
+      })
+      .finally(() => {
+        if (!cancelled) {
+          searchParams.delete('patientId');
+          setSearchParams(searchParams, { replace: true });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setDialogPatient(null);
+  };
 
   return (
     <>
@@ -140,7 +178,7 @@ export function AgendaPage() {
         </div>
       </div>
 
-      <NewAppointmentDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} />
+      <NewAppointmentDialog isOpen={isDialogOpen} onClose={closeDialog} initialPatient={dialogPatient} />
     </>
   );
 }
