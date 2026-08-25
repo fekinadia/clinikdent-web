@@ -57,6 +57,7 @@ export const appointmentsApi = {
     dateDebut: string;
     dateFin: string;
     typeId?: number;
+    medecinId?: number;
     observation?: string;
   }) => api.post<Appointment>('/appointments', data).then((r) => r.data),
 
