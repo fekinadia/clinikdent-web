@@ -45,6 +45,16 @@ export interface PaginatedPatients {
   pageCount: number;
 }
 
+export interface PatientRecall {
+  id: number;
+  nom: string;
+  prenom: string;
+  gsm?: string;
+  telephoneFixe?: string;
+  derniereVisite: string;
+  moisEcoules: number;
+}
+
 export interface AppointmentType {
   id: number;
   libelle: string;
