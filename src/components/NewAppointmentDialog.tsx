@@ -9,6 +9,7 @@ import type { Patient } from '@/types';
 interface NewAppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  initialPatient?: Patient | null;
 }
 
 const DURATIONS = [
@@ -25,7 +26,7 @@ const HOURS = Array.from({ length: 22 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${m}`;
 });
 
-export function NewAppointmentDialog({ isOpen, onClose }: NewAppointmentDialogProps) {
+export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewAppointmentDialogProps) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
 
@@ -45,6 +46,12 @@ export function NewAppointmentDialog({ isOpen, onClose }: NewAppointmentDialogPr
     const timer = setTimeout(() => setDebouncedSearch(patientSearch), 300);
     return () => clearTimeout(timer);
   }, [patientSearch]);
+
+  useEffect(() => {
+    if (isOpen && initialPatient) {
+      setSelectedPatient(initialPatient);
+    }
+  }, [isOpen, initialPatient]);
 
   const { data: searchResults, isFetching: isSearching } = useQuery({
     queryKey: ['patients-search', debouncedSearch],
@@ -100,6 +107,7 @@ export function NewAppointmentDialog({ isOpen, onClose }: NewAppointmentDialogPr
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
       queryClient.invalidateQueries({ queryKey: ['patients-search'] });
+      queryClient.invalidateQueries({ queryKey: ['patients-recalls'] });
       handleClose();
     },
     onError: (error: any) => {
