@@ -118,7 +118,6 @@ export const prescriptionsApi = {
     api.get<Medication[]>('/medications', { params: { search } }).then((r) => r.data),
 };
 
-
 // ===== PATIENT IMAGES (photos, radios, scans) =====
 export interface PatientImage {
   id: number;
@@ -159,4 +158,34 @@ export const patientImagesApi = {
 
   delete: (patientId: number, imageId: number) =>
     api.delete(`/patients/${patientId}/images/${imageId}`).then((r) => r.data),
+};
+
+// ===== REMINDERS (rappels manuels) =====
+export interface Reminder {
+  id: number;
+  cabinetId: number;
+  patientId: number;
+  dateRappel: string;
+  note?: string | null;
+  termine: boolean;
+  createdById?: number | null;
+  createdAt: string;
+  patient?: { id: number; nom: string; prenom: string; gsm?: string | null };
+}
+
+export const remindersApi = {
+  listByPatient: (patientId: number) =>
+    api
+      .get<Reminder[]>('/reminders', { params: { patientId, includeDone: true } })
+      .then((r) => r.data),
+
+  listPending: () => api.get<Reminder[]>('/reminders').then((r) => r.data),
+
+  create: (data: { patientId: number; dateRappel: string; note?: string }) =>
+    api.post<Reminder>('/reminders', data).then((r) => r.data),
+
+  update: (id: number, data: { termine?: boolean; dateRappel?: string; note?: string }) =>
+    api.patch<Reminder>(`/reminders/${id}`, data).then((r) => r.data),
+
+  delete: (id: number) => api.delete(`/reminders/${id}`).then((r) => r.data),
 };
