@@ -117,3 +117,46 @@ export const prescriptionsApi = {
   medications: (search?: string) =>
     api.get<Medication[]>('/medications', { params: { search } }).then((r) => r.data),
 };
+
+
+// ===== PATIENT IMAGES (photos, radios, scans) =====
+export interface PatientImage {
+  id: number;
+  patientId: number;
+  type: string;
+  titre?: string | null;
+  cheminFichier: string;
+  tailleOctets?: string | null;
+  mimeType?: string | null;
+  datePrise?: string | null;
+  observation?: string | null;
+  uploadedById?: number | null;
+  createdAt: string;
+  url?: string | null;
+}
+
+export const patientImagesApi = {
+  list: (patientId: number) =>
+    api.get<PatientImage[]>(`/patients/${patientId}/images`).then((r) => r.data),
+
+  upload: (
+    patientId: number,
+    file: File,
+    data: { type: string; titre?: string; observation?: string; datePrise?: string },
+  ) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', data.type);
+    if (data.titre) formData.append('titre', data.titre);
+    if (data.observation) formData.append('observation', data.observation);
+    if (data.datePrise) formData.append('datePrise', data.datePrise);
+    return api
+      .post<PatientImage>(`/patients/${patientId}/images`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
+
+  delete: (patientId: number, imageId: number) =>
+    api.delete(`/patients/${patientId}/images/${imageId}`).then((r) => r.data),
+};
