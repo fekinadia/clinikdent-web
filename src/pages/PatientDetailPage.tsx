@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { PatientImagesTab } from '../components/PatientImagesTab';
 import { TreatmentsTab } from '../components/TreatmentsTab';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -10,7 +11,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ToothChart } from '@/components/patients/ToothChart';
 import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/utils';
 
-type Tab = 'identite' | 'soins' | 'schema' | 'finance';
+type Tab = 'identite' | 'soins' | 'schema' | 'finance' | 'images';
 
 export function PatientDetailPage() {
   const { id } = useParams();
@@ -134,6 +135,7 @@ export function PatientDetailPage() {
               <TabBtn active={tab === 'finance'} onClick={() => setTab('finance')}>
                 Finances
               </TabBtn>
+              <TabBtn active={tab === 'images'} onClick={() => setTab('images')}>Pièces jointes</TabBtn>
             </div>
           </div>
 
@@ -142,6 +144,7 @@ export function PatientDetailPage() {
             {tab === 'soins' && <TreatmentsTab patientId={patientId} />}
             {tab === 'schema' && <ToothChart patientId={patientId} />}
             {tab === 'finance' && <FinanceTab summary={finSummary} treatments={treatments} patientId={patientId} />}
+            {tab === 'images' && <PatientImagesTab patientId={patientId} />}
           </div>
         </div>
       </div>
