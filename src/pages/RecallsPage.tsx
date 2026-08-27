@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { BellRing, MessageCircle, CalendarPlus, PhoneOff } from 'lucide-react';
-import { patientsApi } from '@/api/endpoints';
+import { BellRing, MessageCircle, CalendarPlus, PhoneOff, Check } from 'lucide-react';
+import { patientsApi, remindersApi, Reminder } from '@/api/endpoints';
 import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
+import { formatDate } from '@/lib/utils';
 
 const PERIODS = [
   { months: 6, label: '6 mois' },
@@ -49,6 +50,8 @@ export function RecallsPage() {
       </header>
 
       <div className="flex-1 overflow-auto p-6 animate-fade-in">
+        <ManualRemindersSection />
+
         <div className="card overflow-hidden">
           {isLoading ? (
             <div className="py-12"><Spinner /></div>
@@ -115,6 +118,64 @@ export function RecallsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function ManualRemindersSection() {
+  const qc = useQueryClient();
+  const { data: reminders, isLoading } = useQuery<Reminder[]>({
+    queryKey: ['reminders-pending'],
+    queryFn: () => remindersApi.listPending(),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (id: number) => remindersApi.update(id, { termine: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reminders-pending'] });
+    },
+  });
+
+  if (isLoading || !reminders || reminders.length === 0) return null;
+
+  return (
+    <div className="card overflow-hidden mb-6">
+      <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+        <Check size={16} className="text-primary-500" />
+        <h2 className="text-sm font-semibold text-slate-700">
+          Rappels manuels ({reminders.length})
+        </h2>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {reminders.map((rem) => (
+          <div
+            key={rem.id}
+            className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors"
+          >
+            <button
+              onClick={() => toggleMutation.mutate(rem.id)}
+              className="w-6 h-6 rounded-full border-2 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 flex-shrink-0 transition"
+              title="Marquer comme fait"
+            />
+
+            <div className="flex-1 min-w-0">
+              {rem.patient && (
+                <Link
+                  to={`/patients/${rem.patient.id}`}
+                  className="font-medium text-sm text-slate-900 hover:text-primary-600 truncate block"
+                >
+                  {rem.patient.prenom} {rem.patient.nom}
+                </Link>
+              )}
+              {rem.note && <div className="text-xs text-slate-500 mt-0.5">{rem.note}</div>}
+            </div>
+
+            <span className="badge badge-warning whitespace-nowrap">
+              {formatDate(rem.dateRappel)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
