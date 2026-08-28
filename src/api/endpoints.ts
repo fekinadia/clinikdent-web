@@ -189,3 +189,37 @@ export const remindersApi = {
 
   delete: (id: number) => api.delete(`/reminders/${id}`).then((r) => r.data),
 };
+
+
+// ===== BILLING (abonnement, paiement Konnect) =====
+export type PlanKey = 'starter' | 'pro' | 'premium';
+
+export interface PlanDefinition {
+  label: string;
+  prixMillimes: number;
+  maxPatients: number | null;
+  maxPraticiens: number | null;
+}
+
+export interface BillingStatus {
+  plan: PlanKey;
+  label: string;
+  statut: string;
+  trialEndsAt?: string | null;
+  subscriptionEndsAt?: string | null;
+  accesBloque: boolean;
+  usage: {
+    patients: { utilises: number; max: number | null };
+    praticiens: { utilises: number; max: number | null };
+  };
+  plansDisponibles: Record<PlanKey, PlanDefinition>;
+}
+
+export const billingApi = {
+  status: () => api.get<BillingStatus>('/billing/status').then((r) => r.data),
+
+  checkout: (plan: PlanKey) =>
+    api
+      .post<{ payUrl: string; paymentRef: string }>('/billing/checkout', { plan })
+      .then((r) => r.data),
+};
