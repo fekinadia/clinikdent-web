@@ -12,12 +12,8 @@ import { AgendaPage } from '@/pages/AgendaPage';
 import { RecallsPage } from '@/pages/RecallsPage';
 import { SubscriptionPage } from '@/pages/SubscriptionPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
-import {
-  TreatmentsPage,
-  PrescriptionsPage,
-  FinancePage,
-  SettingsPage,
-} from '@/pages/PlaceholderPages';
+import { PrescriptionsPage } from '@/pages/PrescriptionsPage';
+import { TreatmentsPage, FinancePage, SettingsPage } from '@/pages/PlaceholderPages';
 
 const queryClient = new QueryClient({
   defaultOptions: {
