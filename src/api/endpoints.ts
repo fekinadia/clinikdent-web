@@ -11,7 +11,10 @@ import type {
   FinancialSummary,
   Medication,
   Prescription,
+  PrescriptionItem,
 } from '@/types';
+
+export type { Prescription, PrescriptionItem };
 
 // ===== AUTH =====
 export const authApi = {
