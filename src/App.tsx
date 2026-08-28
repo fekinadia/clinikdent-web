@@ -11,11 +11,11 @@ import { PatientDetailPage } from '@/pages/PatientDetailPage';
 import { AgendaPage } from '@/pages/AgendaPage';
 import { RecallsPage } from '@/pages/RecallsPage';
 import { SubscriptionPage } from '@/pages/SubscriptionPage';
+import { StatisticsPage } from '@/pages/StatisticsPage';
 import {
   TreatmentsPage,
   PrescriptionsPage,
   FinancePage,
-  StatsPage,
   SettingsPage,
 } from '@/pages/PlaceholderPages';
 
@@ -68,7 +68,7 @@ export function App() {
             <Route path="treatments" element={<TreatmentsPage />} />
             <Route path="prescriptions" element={<PrescriptionsPage />} />
             <Route path="finance" element={<FinancePage />} />
-            <Route path="stats" element={<StatsPage />} />
+            <Route path="stats" element={<StatisticsPage />} />
             <Route path="parametres/abonnement" element={<SubscriptionPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
