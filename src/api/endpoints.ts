@@ -249,3 +249,45 @@ export const statisticsApi = {
   overview: (months = 6) =>
     api.get<StatisticsOverview>(`/statistics/overview?months=${months}`).then((r) => r.data),
 };
+
+export interface PrescriptionItem {
+  id: number;
+  nomMedicament: string;
+  posologie: string;
+}
+
+export interface Prescription {
+  id: number;
+  patientId: number;
+  medecinId: number;
+  dateEmission: string;
+  texteLibre: string | null;
+  imprimee: boolean;
+  createdAt: string;
+  items: PrescriptionItem[];
+}
+
+export interface PrescriptionModele {
+  id: number;
+  cabinetId: number;
+  nom: string;
+  contenu: string;
+  createdById: number;
+  createdAt: string;
+}
+
+export const prescriptionsApi = {
+  listByPatient: (patientId: number) =>
+    api.get<Prescription[]>(`/patients/${patientId}/prescriptions`).then((r) => r.data),
+
+  create: (data: { patientId: number; texteLibre: string; dateEmission?: string }) =>
+    api.post<Prescription>('/prescriptions', { ...data, items: [] }).then((r) => r.data),
+
+  listModeles: () => api.get<PrescriptionModele[]>('/prescription-modeles').then((r) => r.data),
+
+  createModele: (data: { nom: string; contenu: string }) =>
+    api.post<PrescriptionModele>('/prescription-modeles', data).then((r) => r.data),
+
+  deleteModele: (id: number) =>
+    api.delete(`/prescription-modeles/${id}`).then((r) => r.data),
+};
