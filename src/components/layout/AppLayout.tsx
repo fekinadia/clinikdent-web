@@ -8,6 +8,7 @@ import {
   FileText,
   Wallet,
   BarChart3,
+  CreditCard,
   LogOut,
   Settings,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const navItems = [
   { to: '/prescriptions', icon: FileText, label: 'Ordonnances' },
   { to: '/finance', icon: Wallet, label: 'Facturation' },
   { to: '/stats', icon: BarChart3, label: 'Statistiques' },
+  { to: '/parametres/abonnement', icon: CreditCard, label: 'Abonnement' },
 ];
 
 export function AppLayout() {
