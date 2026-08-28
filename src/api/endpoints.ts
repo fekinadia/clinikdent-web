@@ -223,3 +223,29 @@ export const billingApi = {
       .post<{ payUrl: string; paymentRef: string }>('/billing/checkout', { plan })
       .then((r) => r.data),
 };
+
+export interface StatisticsOverview {
+  periode: { mois: number; depuis: string };
+  patients: { total: number; parMois: { mois: string; nouveaux: number }[] };
+  rendezVous: {
+    parMois: {
+      mois: string;
+      total: number;
+      planifie: number;
+      confirme: number;
+      en_cours: number;
+      termine: number;
+      annule: number;
+      absent: number;
+    }[];
+    tauxAbsence: number;
+    tauxConfirmation: number;
+  };
+  recettes: { total: number; parMois: { mois: string; montant: number }[] };
+  actesFrequents: { libelle: string; count: number }[];
+}
+
+export const statisticsApi = {
+  overview: (months = 6) =>
+    api.get<StatisticsOverview>(`/statistics/overview?months=${months}`).then((r) => r.data),
+};
