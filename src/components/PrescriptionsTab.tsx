@@ -14,7 +14,7 @@ export function PrescriptionsTab({ patientId }: PrescriptionsTabProps) {
 
   const { data: prescriptions = [], isLoading } = useQuery<Prescription[]>({
     queryKey: ['prescriptions', patientId],
-    queryFn: () => prescriptionsApi.listByPatient(patientId),
+    queryFn: () => prescriptionsApi.byPatient(patientId),
   });
 
   return (
