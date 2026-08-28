@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,6 +12,8 @@ import {
   CreditCard,
   LogOut,
   Settings,
+  Menu,
+  X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
@@ -30,6 +33,7 @@ const navItems = [
 export function AppLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -38,32 +42,52 @@ export function AppLayout() {
 
   return (
     <div className="h-screen flex overflow-hidden bg-slate-100">
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* SIDEBAR */}
-      <aside className="w-60 flex-shrink-0 flex flex-col bg-primary-900 text-slate-200">
+      <aside
+        className={clsx(
+          'fixed inset-y-0 left-0 z-40 w-60 flex-shrink-0 flex flex-col bg-primary-900 text-slate-200 transition-transform duration-200 md:static md:translate-x-0',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
         <div className="p-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-accent-500 to-primary-500">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 5.5c-1.074-.586-2.583-1.5-4.5-1.5C5.5 4 4 5.5 4 8c0 1.5.5 3 1 4.5C5.5 14 6 16 6.5 18c.5 2 1 3 2 3 1.5 0 1.5-3 3.5-3s2 3 3.5 3c1 0 1.5-1 2-3 .5-2 1-4 1.5-5.5.5-1.5 1-3 1-4.5 0-2.5-1.5-4-3.5-4-1.917 0-3.426.914-4.5 1.5z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-display text-white font-semibold text-lg leading-none">
-                ClinikDent
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-accent-500 to-primary-500">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 5.5c-1.074-.586-2.583-1.5-4.5-1.5C5.5 4 4 5.5 4 8c0 1.5.5 3 1 4.5C5.5 14 6 16 6.5 18c.5 2 1 3 2 3 1.5 0 1.5-3 3.5-3s2 3 3.5 3c1 0 1.5-1 2-3 .5-2 1-4 1.5-5.5.5-1.5 1-3 1-4.5 0-2.5-1.5-4-3.5-4-1.917 0-3.426.914-4.5 1.5z" />
+                </svg>
               </div>
-              <div className="text-[10px] text-white/50 mt-1 tracking-widest uppercase">
-                v 1.0
+              <div>
+                <div className="font-display text-white font-semibold text-lg leading-none">
+                  ClinikDent
+                </div>
+                <div className="text-[10px] text-white/50 mt-1 tracking-widest uppercase">
+                  v 1.0
+                </div>
               </div>
             </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="md:hidden text-white/60 hover:text-white p-1"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
 
@@ -73,6 +97,7 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
                 clsx(
                   'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all',
@@ -91,6 +116,7 @@ export function AppLayout() {
         <div className="p-3 border-t border-white/10">
           <NavLink
             to="/settings"
+            onClick={() => setMobileMenuOpen(false)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
           >
             <Settings size={16} />
@@ -122,6 +148,12 @@ export function AppLayout() {
 
       {/* MAIN */}
       <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="md:hidden flex items-center gap-3 bg-primary-900 text-white px-4 py-3 flex-shrink-0">
+          <button onClick={() => setMobileMenuOpen(true)} className="text-white/80 hover:text-white">
+            <Menu size={22} />
+          </button>
+          <span className="font-display font-semibold">ClinikDent</span>
+        </div>
         <Outlet />
       </main>
     </div>
