@@ -13,6 +13,10 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ToothChart } from '@/components/patients/ToothChart';
 import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/utils';
 
+// Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
+// est retiré de la fiche patient (et du menu). Fonctionnalité et données intactes.
+const ORDONNANCES_TAB_VISIBLE = false;
+
 type Tab = 'identite' | 'soins' | 'schema' | 'finance' | 'images' | 'rappels' | 'ordonnances';
 
 export function PatientDetailPage() {
@@ -139,7 +143,9 @@ export function PatientDetailPage() {
               </TabBtn>
               <TabBtn active={tab === 'images'} onClick={() => setTab('images')}>Pièces jointes</TabBtn>
 <TabBtn active={tab === 'rappels'} onClick={() => setTab('rappels')}>Rappels</TabBtn>
-<TabBtn active={tab === 'ordonnances'} onClick={() => setTab('ordonnances')}>Ordonnances</TabBtn>
+{ORDONNANCES_TAB_VISIBLE && (
+                <TabBtn active={tab === 'ordonnances'} onClick={() => setTab('ordonnances')}>Ordonnances</TabBtn>
+              )}
             </div>
           </div>
 
