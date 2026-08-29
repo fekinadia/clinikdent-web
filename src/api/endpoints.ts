@@ -271,3 +271,44 @@ export interface PrescriptionModele {
   createdById: number;
   createdAt: string;
 }
+
+
+// ===== AUTOMATISATION PATIENTS =====
+export interface AutomationSettings {
+  id: number;
+  cabinetId: number;
+  rappelsActifs: boolean;
+  noShowActif: boolean;
+  recallActif: boolean;
+  rappelOffsetsHeures: number[];
+  delaiNoShowHeures: number;
+  recallDefautMois: number;
+}
+
+export const automationApi = {
+  getSettings: () => api.get<AutomationSettings>('/automation-settings').then((r) => r.data),
+  updateSettings: (data: Partial<Omit<AutomationSettings, 'id' | 'cabinetId'>>) =>
+    api.patch<AutomationSettings>('/automation-settings', data).then((r) => r.data),
+};
+
+// ===== WHATSAPP TEMPLATES =====
+export interface WhatsAppTemplate {
+  id: number;
+  cabinetId: number;
+  type: 'reminder' | 'recall' | 'no_show';
+  nom: string;
+  contenu: string;
+  statutApprobation: 'brouillon' | 'en_attente' | 'approuve' | 'rejete';
+  metaTemplateName: string | null;
+  createdAt: string;
+}
+
+export const whatsappApi = {
+  listTemplates: (type?: WhatsAppTemplate['type']) =>
+    api.get<WhatsAppTemplate[]>('/whatsapp-templates', { params: { type } }).then((r) => r.data),
+  createTemplate: (data: { type: WhatsAppTemplate['type']; nom: string; contenu: string }) =>
+    api.post<WhatsAppTemplate>('/whatsapp-templates', data).then((r) => r.data),
+  updateTemplate: (id: number, data: Partial<{ nom: string; contenu: string; type: WhatsAppTemplate['type'] }>) =>
+    api.patch<WhatsAppTemplate>(`/whatsapp-templates/${id}`, data).then((r) => r.data),
+  deleteTemplate: (id: number) => api.delete(`/whatsapp-templates/${id}`).then((r) => r.data),
+};
