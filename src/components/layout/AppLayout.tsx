@@ -27,6 +27,10 @@ import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
 
+// Masqué temporairement dans le menu en attendant la validation Meta Tech Provider (Nadia, 2026-08-29).
+// Repasser à true une fois la connexion WhatsApp par cabinet prête (Phase 3).
+const AUTOMATISATION_MENU_VISIBLE = false;
+
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
   { to: '/patients', icon: Users, label: 'Patients' },
@@ -187,12 +191,14 @@ export function AppLayout() {
               {item.label}
             </NavLink>
           ))}
-          <NavGroup
-            icon={Zap}
-            label="Automatisation Patients"
-            items={automationNavItems}
-            onNavigate={() => setMobileMenuOpen(false)}
-          />
+          {AUTOMATISATION_MENU_VISIBLE && (
+            <NavGroup
+              icon={Zap}
+              label="Automatisation Patients"
+              items={automationNavItems}
+              onNavigate={() => setMobileMenuOpen(false)}
+            />
+          )}
         </nav>
 
         <div className="p-3 border-t border-white/10">
