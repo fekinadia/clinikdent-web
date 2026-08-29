@@ -34,6 +34,11 @@ const AUTOMATISATION_MENU_VISIBLE = false;
 // Masqué temporairement (Nadia, 2026-08-29) : paiement Konnect pas encore configuré / en pause.
 const ABONNEMENT_MENU_VISIBLE = false;
 
+// Masqué temporairement (Nadia, 2026-08-29) : backend prêt (créer un soin, encaisser un acte,
+// schéma dentaire) mais jamais branché côté interface, et catalogue d'actes du cabinet sans
+// aucune gestion — à construire plus tard.
+const SOINS_MENU_VISIBLE = false;
+
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
   { to: '/patients', icon: Users, label: 'Patients' },
@@ -175,7 +180,10 @@ export function AppLayout() {
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5">
-          {navItems.filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement').map((item) => (
+          {navItems
+            .filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement')
+            .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
+            .map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
