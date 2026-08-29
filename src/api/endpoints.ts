@@ -312,3 +312,61 @@ export const whatsappApi = {
     api.patch<WhatsAppTemplate>(`/whatsapp-templates/${id}`, data).then((r) => r.data),
   deleteTemplate: (id: number) => api.delete(`/whatsapp-templates/${id}`).then((r) => r.data),
 };
+
+// ===== APPOINTMENT REMINDERS (automatisation) =====
+export interface AppointmentReminder {
+  id: number;
+  appointmentId: number;
+  offsetHours: number;
+  statut: 'programme' | 'envoye' | 'delivre' | 'lu' | 'repondu' | 'echec' | 'annule';
+  envoyeAt: string | null;
+  appointment?: any;
+  patient?: any;
+}
+
+export const appointmentRemindersApi = {
+  list: (statut?: AppointmentReminder['statut']) =>
+    api.get<AppointmentReminder[]>('/appointment-reminders', { params: { statut } }).then((r) => r.data),
+};
+
+// ===== NO-SHOW RECOVERIES (automatisation) =====
+export interface NoShowRecovery {
+  id: number;
+  appointmentId?: number;
+  patientId?: number;
+  statut: 'en_attente' | 'recupere' | 'perdu';
+  appointment?: any;
+  patient?: any;
+  dentiste?: any;
+  type?: any;
+  typeRendezVous?: any;
+  dateRendezVous?: string;
+}
+
+export const noShowRecoveriesApi = {
+  list: (statut?: NoShowRecovery['statut']) =>
+    api.get<NoShowRecovery[]>('/no-show-recoveries', { params: { statut } }).then((r) => r.data),
+  markAsLost: (id: number) =>
+    api.patch<NoShowRecovery>(`/no-show-recoveries/${id}`, { statut: 'perdu' }).then((r) => r.data),
+};
+
+// ===== RECALLS (automatisation) =====
+export interface Recall {
+  id: number;
+  patientId: number;
+  typeRecallMois: number | null;
+  dateDerniereVisite: string | null;
+  dateEcheance: string;
+  statut: 'a_venir' | 'du' | 'envoye' | 'converti' | 'annule';
+  patient?: any;
+}
+
+export const recallsApi = {
+  list: (statut?: Recall['statut']) =>
+    api.get<Recall[]>('/recalls', { params: { statut } }).then((r) => r.data),
+  create: (data: { patientId: number; typeRecallMois?: number; dateEcheance?: string }) =>
+    api.post<Recall>('/recalls', data).then((r) => r.data),
+  update: (id: number, data: Partial<{ dateEcheance: string; typeRecallMois: number; statut: Recall['statut'] }>) =>
+    api.patch<Recall>(`/recalls/${id}`, data).then((r) => r.data),
+  remove: (id: number) => api.delete(`/recalls/${id}`).then((r) => r.data),
+};
