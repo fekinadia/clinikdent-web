@@ -31,6 +31,9 @@ import { useAuthStore } from '@/lib/auth-store';
 // Repasser à true une fois la connexion WhatsApp par cabinet prête (Phase 3).
 const AUTOMATISATION_MENU_VISIBLE = false;
 
+// Masqué temporairement (Nadia, 2026-08-29) : paiement Konnect pas encore configuré / en pause.
+const ABONNEMENT_MENU_VISIBLE = false;
+
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
   { to: '/patients', icon: Users, label: 'Patients' },
@@ -172,7 +175,7 @@ export function AppLayout() {
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5">
-          {navItems.map((item) => (
+          {navItems.filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement').map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
