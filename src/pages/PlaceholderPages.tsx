@@ -1,4 +1,4 @@
-import { FileText, Wallet, BarChart3, Settings, Activity } from 'lucide-react';
+import { FileText, BarChart3, Settings, Activity } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 function PlaceholderPage({ title, icon, description }: { title: string; icon: React.ReactNode; description: string }) {
@@ -36,16 +36,6 @@ export function PrescriptionsPage() {
       title="Ordonnances"
       icon={<FileText size={48} />}
       description="Module de création d'ordonnances avec catalogue de médicaments et modèles types en cours de développement."
-    />
-  );
-}
-
-export function FinancePage() {
-  return (
-    <PlaceholderPage
-      title="Facturation"
-      icon={<Wallet size={48} />}
-      description="Module de facturation, encaissements et suivi des impayés en cours de développement."
     />
   );
 }
