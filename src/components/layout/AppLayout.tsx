@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
 
@@ -53,9 +54,9 @@ function NavGroup({
   items,
   onNavigate,
 }: {
-  icon: React.ComponentType<{ size?: number }>;
+  icon: LucideIcon;
   label: string;
-  items: { to: string; icon: React.ComponentType<{ size?: number }>; label: string; end?: boolean }[];
+  items: { to: string; icon: LucideIcon; label: string; end?: boolean }[];
   onNavigate: () => void;
 }) {
   const location = useLocation();
