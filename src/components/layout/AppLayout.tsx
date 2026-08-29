@@ -39,6 +39,10 @@ const ABONNEMENT_MENU_VISIBLE = false;
 // aucune gestion — à construire plus tard.
 const SOINS_MENU_VISIBLE = false;
 
+// Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
+// est retiré du menu et de la fiche patient. Fonctionnalité et données intactes.
+const ORDONNANCES_MENU_VISIBLE = false;
+
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
   { to: '/patients', icon: Users, label: 'Patients' },
@@ -183,6 +187,7 @@ export function AppLayout() {
           {navItems
             .filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement')
             .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
+            .filter((item) => ORDONNANCES_MENU_VISIBLE || item.to !== '/prescriptions')
             .map((item) => (
             <NavLink
               key={item.to}
