@@ -370,3 +370,41 @@ export const recallsApi = {
     api.patch<Recall>(`/recalls/${id}`, data).then((r) => r.data),
   remove: (id: number) => api.delete(`/recalls/${id}`).then((r) => r.data),
 };
+
+// ===== FINANCE (facturation) =====
+export interface FinanceOverview {
+  totalEncaisse: number;
+  totalImpaye: number;
+  nbPatientsImpaye: number;
+}
+
+export interface UnpaidPatient {
+  patientId: number;
+  nom: string;
+  prenom: string;
+  gsm: string | null;
+  numeroDossier: string;
+  total: number;
+  recu: number;
+  remise: number;
+  reste: number;
+}
+
+export interface FinancePayment {
+  id: number;
+  montant: number;
+  modeReglement: string;
+  datePaiement: string;
+  patientId: number;
+  nomPatient: string;
+  prenomPatient: string;
+  numeroDossier: string;
+}
+
+export const financeApi = {
+  getOverview: (months?: number) =>
+    api.get<FinanceOverview>('/finance/overview', { params: { months } }).then((r) => r.data),
+  listUnpaid: () => api.get<UnpaidPatient[]>('/finance/unpaid').then((r) => r.data),
+  listPayments: (params?: { from?: string; to?: string; patientId?: number }) =>
+    api.get<FinancePayment[]>('/finance/payments', { params }).then((r) => r.data),
+};
