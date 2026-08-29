@@ -19,7 +19,8 @@ import { AutomationHistoryPage } from '@/pages/automation/AutomationHistoryPage'
 import { SubscriptionPage } from '@/pages/SubscriptionPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
 import { PrescriptionsPage } from '@/pages/PrescriptionsPage';
-import { TreatmentsPage, FinancePage, SettingsPage } from '@/pages/PlaceholderPages';
+import { TreatmentsPage, SettingsPage } from '@/pages/PlaceholderPages';
+import { FinancePage } from '@/pages/FinancePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
