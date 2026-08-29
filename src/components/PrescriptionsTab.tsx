@@ -1,16 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, FileText, X } from 'lucide-react';
+import { Plus, FileText, X, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { prescriptionsApi, Prescription, PrescriptionModele } from '../api/endpoints';
 import { formatDate } from '../lib/utils';
 
 interface PrescriptionsTabProps {
   patientId: number;
+  patient?: {
+    prenom: string;
+    nom: string;
+    numeroDossier: string;
+    dateNaissance?: string;
+  };
 }
 
-export function PrescriptionsTab({ patientId }: PrescriptionsTabProps) {
+export function PrescriptionsTab({ patientId, patient }: PrescriptionsTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [prescAImprimer, setPrescAImprimer] = useState<Prescription | null>(null);
+
+  useEffect(() => {
+    if (!prescAImprimer) return;
+    const timer = setTimeout(() => {
+      window.print();
+    }, 100);
+    const handleAfterPrint = () => setPrescAImprimer(null);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [prescAImprimer]);
 
   const { data: prescriptions = [], isLoading } = useQuery<Prescription[]>({
     queryKey: ['prescriptions', patientId],
@@ -67,6 +87,13 @@ export function PrescriptionsTab({ patientId }: PrescriptionsTabProps) {
                 <span className="text-sm font-medium text-slate-900">
                   {formatDate(presc.dateEmission)}
                 </span>
+                <button
+                  onClick={() => setPrescAImprimer(presc)}
+                  className="text-slate-500 hover:text-primary-600 inline-flex items-center gap-1.5 text-sm font-medium"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimer
+                </button>
               </div>
               {presc.texteLibre && (
                 <p className="text-sm text-slate-600 whitespace-pre-wrap">{presc.texteLibre}</p>
@@ -82,6 +109,52 @@ export function PrescriptionsTab({ patientId }: PrescriptionsTabProps) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {prescAImprimer && (
+        <div className="print-area">
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Ordonnance</h2>
+              {patient && (
+                <p className="text-sm text-slate-600 mt-1">Dossier n° {patient.numeroDossier}</p>
+              )}
+            </div>
+            <p className="text-sm text-slate-600">{formatDate(prescAImprimer.dateEmission)}</p>
+          </div>
+
+          {patient && (
+            <div className="mb-8 text-sm text-slate-700">
+              <p className="font-medium">
+                {patient.prenom} {patient.nom}
+              </p>
+              {patient.dateNaissance && <p>Né(e) le {formatDate(patient.dateNaissance)}</p>}
+            </div>
+          )}
+
+          {prescAImprimer.texteLibre && (
+            <p className="text-sm text-slate-800 whitespace-pre-wrap mb-6">
+              {prescAImprimer.texteLibre}
+            </p>
+          )}
+
+          {prescAImprimer.items.length > 0 && (
+            <ul className="space-y-2 mb-6">
+              {prescAImprimer.items.map((item) => (
+                <li key={item.id} className="text-sm text-slate-800">
+                  <span className="font-medium">{item.nomMedicament}</span> — {item.posologie}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-16 flex justify-end">
+            <div className="text-center">
+              <p className="text-sm text-slate-600 mb-12">Signature et cachet</p>
+              <div className="w-48 border-t border-slate-400"></div>
+            </div>
+          </div>
         </div>
       )}
 
