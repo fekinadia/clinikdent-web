@@ -150,7 +150,7 @@ export function PatientDetailPage() {
             {tab === 'finance' && <FinanceTab summary={finSummary} treatments={treatments} patientId={patientId} />}
             {tab === 'images' && <PatientImagesTab patientId={patientId} />}
 {tab === 'rappels' && <RemindersTab patientId={patientId} />}
-{tab === 'ordonnances' && <PrescriptionsTab patientId={patientId} />}
+{tab === 'ordonnances' && <PrescriptionsTab patientId={patientId} patient={patient} />}
           </div>
         </div>
       </div>
