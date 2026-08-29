@@ -10,6 +10,12 @@ import { PatientsListPage } from '@/pages/PatientsListPage';
 import { PatientDetailPage } from '@/pages/PatientDetailPage';
 import { AgendaPage } from '@/pages/AgendaPage';
 import { RecallsPage } from '@/pages/RecallsPage';
+import { AutomationOverviewPage } from '@/pages/automation/AutomationOverviewPage';
+import { AutomationRemindersPage } from '@/pages/automation/AutomationRemindersPage';
+import { AutomationNoShowsPage } from '@/pages/automation/AutomationNoShowsPage';
+import { AutomationRecallsPage } from '@/pages/automation/AutomationRecallsPage';
+import { AutomationWhatsAppPage } from '@/pages/automation/AutomationWhatsAppPage';
+import { AutomationHistoryPage } from '@/pages/automation/AutomationHistoryPage';
 import { SubscriptionPage } from '@/pages/SubscriptionPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
 import { PrescriptionsPage } from '@/pages/PrescriptionsPage';
@@ -61,6 +67,12 @@ export function App() {
             <Route path="patients/:id" element={<PatientDetailPage />} />
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="recalls" element={<RecallsPage />} />
+            <Route path="automatisation" element={<AutomationOverviewPage />} />
+            <Route path="automatisation/rappels" element={<AutomationRemindersPage />} />
+            <Route path="automatisation/no-shows" element={<AutomationNoShowsPage />} />
+            <Route path="automatisation/recalls" element={<AutomationRecallsPage />} />
+            <Route path="automatisation/whatsapp" element={<AutomationWhatsAppPage />} />
+            <Route path="automatisation/historique" element={<AutomationHistoryPage />} />
             <Route path="treatments" element={<TreatmentsPage />} />
             <Route path="prescriptions" element={<PrescriptionsPage />} />
             <Route path="finance" element={<FinancePage />} />
