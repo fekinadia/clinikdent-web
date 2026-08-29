@@ -43,6 +43,11 @@ const SOINS_MENU_VISIBLE = false;
 // est retiré du menu et de la fiche patient. Fonctionnalité et données intactes.
 const ORDONNANCES_MENU_VISIBLE = false;
 
+// Masqué temporairement (Nadia, 2026-08-29) : la page Paramètres n'est encore qu'un
+// placeholder "Bientôt disponible" (configuration du cabinet, catalogue d'actes, types
+// de RDV, utilisateurs et préférences) — retirée du menu à la demande de Nadia.
+const PARAMETRES_MENU_VISIBLE = false;
+
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
   { to: '/patients', icon: Users, label: 'Patients' },
@@ -218,14 +223,16 @@ export function AppLayout() {
         </nav>
 
         <div className="p-3 border-t border-white/10">
-          <NavLink
-            to="/settings"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
-          >
-            <Settings size={16} />
-            Paramètres
-          </NavLink>
+          {PARAMETRES_MENU_VISIBLE && (
+            <NavLink
+              to="/settings"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
+            >
+              <Settings size={16} />
+              Paramètres
+            </NavLink>
+          )}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all"
