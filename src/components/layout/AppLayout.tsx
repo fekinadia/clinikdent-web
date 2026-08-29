@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -14,6 +14,14 @@ import {
   Settings,
   Menu,
   X,
+  Zap,
+  Gauge,
+  Clock,
+  RotateCcw,
+  MessageCircle,
+  History,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
@@ -22,13 +30,80 @@ const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
   { to: '/patients', icon: Users, label: 'Patients' },
   { to: '/agenda', icon: Calendar, label: 'Agenda' },
-  { to: '/recalls', icon: BellRing, label: 'Rappels' },
+  { to: '/recalls', icon: BellRing, label: 'Patients à réactiver' },
   { to: '/treatments', icon: Activity, label: 'Soins' },
   { to: '/prescriptions', icon: FileText, label: 'Ordonnances' },
   { to: '/finance', icon: Wallet, label: 'Facturation' },
   { to: '/stats', icon: BarChart3, label: 'Statistiques' },
   { to: '/parametres/abonnement', icon: CreditCard, label: 'Abonnement' },
 ];
+
+const automationNavItems = [
+  { to: '/automatisation', icon: Gauge, label: "Vue d'ensemble", end: true },
+  { to: '/automatisation/rappels', icon: BellRing, label: 'Rappels' },
+  { to: '/automatisation/no-shows', icon: Clock, label: 'No-Shows' },
+  { to: '/automatisation/recalls', icon: RotateCcw, label: 'Recalls' },
+  { to: '/automatisation/whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+  { to: '/automatisation/historique', icon: History, label: 'Historique' },
+];
+
+function NavGroup({
+  icon: Icon,
+  label,
+  items,
+  onNavigate,
+}: {
+  icon: React.ComponentType<{ size?: number }>;
+  label: string;
+  items: { to: string; icon: React.ComponentType<{ size?: number }>; label: string; end?: boolean }[];
+  onNavigate: () => void;
+}) {
+  const location = useLocation();
+  const isGroupActive = items.some((item) =>
+    item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
+  );
+  const [isOpen, setIsOpen] = useState(isGroupActive);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className={clsx(
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all',
+          isGroupActive ? 'text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+        )}
+      >
+        <Icon size={16} />
+        <span className="flex-1 text-left">{label}</span>
+        {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+      </button>
+      {isOpen && (
+        <div className="mt-0.5 ml-4 pl-3 border-l border-white/10 space-y-0.5">
+          {items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                clsx(
+                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all',
+                  isActive
+                    ? 'bg-gradient-to-r from-primary-500 to-primary-500/0 text-white shadow-[inset_3px_0_0_#14b8a6]'
+                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                )
+              }
+            >
+              <item.icon size={16} />
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AppLayout() {
   const { user, logout } = useAuthStore();
@@ -111,6 +186,12 @@ export function AppLayout() {
               {item.label}
             </NavLink>
           ))}
+          <NavGroup
+            icon={Zap}
+            label="Automatisation Patients"
+            items={automationNavItems}
+            onNavigate={() => setMobileMenuOpen(false)}
+          />
         </nav>
 
         <div className="p-3 border-t border-white/10">
