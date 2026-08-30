@@ -9,8 +9,8 @@ import { Spinner } from '@/components/ui/Spinner';
 export function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
-  const [email, setEmail] = useState('demo@clinikdent.tn');
-  const [password, setPassword] = useState('demo1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const mutation = useMutation({
     mutationFn: () => authApi.login(email, password),
