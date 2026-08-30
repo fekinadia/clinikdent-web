@@ -115,6 +115,11 @@ export function RemindersTab({ patientId }: RemindersTabProps) {
                     {rem.note}
                   </div>
                 )}
+                {!rem.termine && (
+                  <span className={`badge mt-1 ${rem.smsEnvoye ? 'badge-success' : 'badge-info'}`}>
+                    {rem.smsEnvoye ? 'SMS envoyé' : 'SMS auto le jour J'}
+                  </span>
+                )}
               </div>
 
               <button
