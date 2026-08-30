@@ -169,6 +169,9 @@ function ManualRemindersSection() {
               {rem.note && <div className="text-xs text-slate-500 mt-0.5">{rem.note}</div>}
             </div>
 
+            <span className={`badge whitespace-nowrap ${rem.smsEnvoye ? 'badge-success' : 'badge-info'}`}>
+              {rem.smsEnvoye ? 'SMS envoyé' : 'SMS auto'}
+            </span>
             <span className="badge badge-warning whitespace-nowrap">
               {formatDate(rem.dateRappel)}
             </span>
