@@ -112,9 +112,6 @@ export function LoginPage() {
             </Link>
           </p>
 
-          <div className="mt-8 p-3 bg-slate-50 rounded-lg text-xs text-slate-600">
-            <strong>Compte de démo :</strong> demo@clinikdent.tn / demo1234
-          </div>
         </div>
       </div>
     </div>
