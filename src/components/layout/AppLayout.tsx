@@ -48,6 +48,12 @@ const ORDONNANCES_MENU_VISIBLE = false;
 // de RDV, utilisateurs et préférences) — retirée du menu à la demande de Nadia.
 const PARAMETRES_MENU_VISIBLE = false;
 
+// Masqué temporairement (Nadia, 2026-08-30) : à la demande de Nadia, en attendant de
+// régler la question du statut professionnel (patente / auto-entrepreneur) avant de
+// continuer à mettre en avant les relances patients. Fonctionnalité et données intactes,
+// juste retirée du menu.
+const RECALLS_MENU_VISIBLE = false;
+
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
   { to: '/patients', icon: Users, label: 'Patients' },
@@ -193,6 +199,7 @@ export function AppLayout() {
             .filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement')
             .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
             .filter((item) => ORDONNANCES_MENU_VISIBLE || item.to !== '/prescriptions')
+            .filter((item) => RECALLS_MENU_VISIBLE || item.to !== '/recalls')
             .map((item) => (
             <NavLink
               key={item.to}
