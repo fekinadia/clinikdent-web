@@ -181,6 +181,8 @@ export interface Reminder {
   dateRappel: string;
   note?: string | null;
   termine: boolean;
+  smsEnvoye: boolean;
+  smsEnvoyeAt?: string | null;
   createdById?: number | null;
   createdAt: string;
   patient?: { id: number; nom: string; prenom: string; gsm?: string | null };
