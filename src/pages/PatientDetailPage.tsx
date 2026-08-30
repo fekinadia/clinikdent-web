@@ -17,6 +17,11 @@ import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/ut
 // est retiré de la fiche patient (et du menu). Fonctionnalité et données intactes.
 const ORDONNANCES_TAB_VISIBLE = false;
 
+// Masqué temporairement (Nadia, 2026-08-30) : à la demande de Nadia, en attendant de
+// régler la question du statut professionnel (patente / auto-entrepreneur) nécessaire
+// pour l'envoi de SMS. Fonctionnalité et données intactes, juste retiré de la fiche patient.
+const RAPPELS_TAB_VISIBLE = false;
+
 type Tab = 'identite' | 'soins' | 'schema' | 'finance' | 'images' | 'rappels' | 'ordonnances';
 
 export function PatientDetailPage() {
@@ -142,7 +147,9 @@ export function PatientDetailPage() {
                 Finances
               </TabBtn>
               <TabBtn active={tab === 'images'} onClick={() => setTab('images')}>Pièces jointes</TabBtn>
-<TabBtn active={tab === 'rappels'} onClick={() => setTab('rappels')}>Rappels</TabBtn>
+{RAPPELS_TAB_VISIBLE && (
+                <TabBtn active={tab === 'rappels'} onClick={() => setTab('rappels')}>Rappels</TabBtn>
+              )}
 {ORDONNANCES_TAB_VISIBLE && (
                 <TabBtn active={tab === 'ordonnances'} onClick={() => setTab('ordonnances')}>Ordonnances</TabBtn>
               )}
