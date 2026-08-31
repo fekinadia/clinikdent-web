@@ -4,7 +4,6 @@ import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/auth-store';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LoginPage } from '@/pages/LoginPage';
-import { RegisterPage } from '@/pages/RegisterPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { PatientsListPage } from '@/pages/PatientsListPage';
 import { PatientDetailPage } from '@/pages/PatientDetailPage';
@@ -52,10 +51,6 @@ export function App() {
           <Route
             path="/login"
             element={<PublicRoute><LoginPage /></PublicRoute>}
-          />
-          <Route
-            path="/register"
-            element={<PublicRoute><RegisterPage /></PublicRoute>}
           />
 
           {/* Routes protégées */}
