@@ -214,8 +214,9 @@ function IdentiteTab({ patient }: { patient: any }) {
       patientsApi.update(patient.id, {
         ...form,
         // Même contrainte que la création : le backend rejette une chaîne vide
-        // pour dateNaissance (@IsDateString()), undefined est accepté.
+        // pour dateNaissance (@IsDateString()) et email (@IsEmail()), undefined est accepté.
         dateNaissance: form.dateNaissance || undefined,
+        email: form.email || undefined,
       }),
     onSuccess: () => {
       toast.success('Fiche patient mise à jour');
