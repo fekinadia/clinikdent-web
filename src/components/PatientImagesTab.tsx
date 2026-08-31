@@ -144,19 +144,27 @@ function UploadImageDialog({
 }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [type, setType] = useState<string>('photo');
   const [titre, setTitre] = useState('');
   const [observation, setObservation] = useState('');
   const [datePrise, setDatePrise] = useState('');
 
   const uploadMutation = useMutation({
-    mutationFn: () => {
-      if (!file) throw new Error('Aucun fichier sélectionné');
-      return patientImagesApi.upload(patientId, file, { type, titre, observation, datePrise });
+    mutationFn: async () => {
+      if (files.length === 0) throw new Error('Aucun fichier sélectionné');
+      const results = await Promise.allSettled(
+        files.map((f) => patientImagesApi.upload(patientId, f, { type, titre, observation, datePrise })),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      return { total: files.length, failed };
     },
-    onSuccess: () => {
-      toast.success('Pièce jointe ajoutée');
+    onSuccess: ({ total, failed }: { total: number; failed: number }) => {
+      if (failed === 0) {
+        toast.success(total > 1 ? `${total} fichiers ajoutés` : 'Pièce jointe ajoutée');
+      } else {
+        toast.error(`${total - failed}/${total} fichier(s) envoyé(s), ${failed} échec(s)`);
+      }
       qc.invalidateQueries({ queryKey: ['patientImages', patientId] });
       onClose();
     },
@@ -182,18 +190,20 @@ function UploadImageDialog({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
+            multiple
             className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
           />
           <Upload className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          {file ? (
-            <p className="text-sm font-medium text-slate-900">{file.name}</p>
+          {files.length > 0 ? (
+            <p className="text-sm font-medium text-slate-900">
+              {files.length > 1 ? `${files.length} fichiers sélectionnés` : files[0].name}
+            </p>
           ) : (
             <p className="text-sm text-slate-500">
-              Cliquer pour choisir un fichier
+              Cliquer pour choisir un ou plusieurs fichiers
               <br />
-              <span className="text-xs">JPEG, PNG, WEBP ou PDF — 15 Mo max</span>
+              <span className="text-xs">Tous types de fichiers acceptés — 15 Mo max par fichier</span>
             </p>
           )}
         </div>
@@ -245,11 +255,15 @@ function UploadImageDialog({
           </button>
           <button
             onClick={() => uploadMutation.mutate()}
-            disabled={!file || uploadMutation.isPending}
+            disabled={files.length === 0 || uploadMutation.isPending}
             className="px-5 py-2.5 text-white rounded-lg font-medium transition disabled:opacity-50"
             style={{ backgroundColor: '#0e6ba8' }}
           >
-            {uploadMutation.isPending ? 'Envoi...' : 'Envoyer'}
+            {uploadMutation.isPending
+              ? 'Envoi...'
+              : files.length > 1
+                ? `Envoyer (${files.length})`
+                : 'Envoyer'}
           </button>
         </div>
       </div>
