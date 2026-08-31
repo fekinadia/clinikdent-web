@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Calendar, Activity } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Calendar, Activity, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 import { api } from '../api/client';
 import { NewTreatmentDialog } from './NewTreatmentDialog';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
@@ -37,8 +38,15 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
+  const qc = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [payingAct, setPayingAct] = useState<TreatmentAct | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{
+    dateSoin: string;
+    observations: string;
+    acts: { id: number; libelle: string; dents: string }[];
+  } | null>(null);
 
   const { data: treatments = [], isLoading } = useQuery<Treatment[]>({
     queryKey: ['treatments', patientId],
@@ -46,6 +54,35 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
       const res = await api.get(`/patients/${patientId}/treatments`);
       return res.data;
     },
+  });
+
+  function startEditing(treatment: Treatment) {
+    setEditingId(treatment.id);
+    setEditForm({
+      dateSoin: treatment.dateSoin.slice(0, 10),
+      observations: treatment.observations || '',
+      acts: treatment.acts.map((a) => ({ id: a.id, libelle: a.libelle, dents: a.dents || '' })),
+    });
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setEditForm(null);
+  }
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      api.patch(`/treatments/${editingId}`, {
+        dateSoin: editForm?.dateSoin,
+        observations: editForm?.observations || undefined,
+        acts: editForm?.acts,
+      }),
+    onSuccess: () => {
+      toast.success('Séance de soins mise à jour');
+      qc.invalidateQueries({ queryKey: ['treatments', patientId] });
+      cancelEditing();
+    },
+    onError: () => toast.error("Erreur lors de l'enregistrement"),
   });
 
   return (
@@ -113,17 +150,39 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                       <Calendar className="w-5 h-5 text-primary-600" />
                     </div>
                     <div>
-                      <div className="font-semibold text-slate-900">
-                        {format(new Date(treatment.dateSoin), 'EEEE d MMMM yyyy', { locale: fr })}
-                      </div>
+                      {editingId === treatment.id ? (
+                        <input
+                          type="date"
+                          value={editForm?.dateSoin || ''}
+                          onChange={(e) =>
+                            setEditForm((f) => (f ? { ...f, dateSoin: e.target.value } : f))
+                          }
+                          className="input py-1 text-sm"
+                        />
+                      ) : (
+                        <div className="font-semibold text-slate-900">
+                          {format(new Date(treatment.dateSoin), 'EEEE d MMMM yyyy', { locale: fr })}
+                        </div>
+                      )}
                       <div className="text-xs text-slate-500">
                         {treatment.acts.length} acte{treatment.acts.length > 1 ? 's' : ''}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-slate-500">Total</div>
-                    <div className="font-semibold text-slate-900">{totalCost.toFixed(2)} DT</div>
+                  <div className="flex items-start gap-3">
+                    <div className="text-right">
+                      <div className="text-xs text-slate-500">Total</div>
+                      <div className="font-semibold text-slate-900">{totalCost.toFixed(2)} DT</div>
+                    </div>
+                    {editingId !== treatment.id && (
+                      <button
+                        onClick={() => startEditing(treatment)}
+                        className="text-slate-400 hover:text-primary-600 transition"
+                        title="Modifier"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -131,6 +190,49 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                 <div className="space-y-2">
                   {treatment.acts.map((act) => {
                     const reste = Number(act.cout) - Number(act.montantRecu) - Number(act.remise || 0);
+                    const editingAct = editForm?.acts.find((a) => a.id === act.id);
+                    if (editingId === treatment.id && editingAct) {
+                      return (
+                        <div key={act.id} className="py-2 space-y-1.5">
+                          <input
+                            type="text"
+                            value={editingAct.libelle}
+                            onChange={(e) =>
+                              setEditForm((f) =>
+                                f
+                                  ? {
+                                      ...f,
+                                      acts: f.acts.map((a) =>
+                                        a.id === act.id ? { ...a, libelle: e.target.value } : a,
+                                      ),
+                                    }
+                                  : f,
+                              )
+                            }
+                            className="input text-sm"
+                            placeholder="Libellé de l'acte"
+                          />
+                          <input
+                            type="text"
+                            value={editingAct.dents}
+                            onChange={(e) =>
+                              setEditForm((f) =>
+                                f
+                                  ? {
+                                      ...f,
+                                      acts: f.acts.map((a) =>
+                                        a.id === act.id ? { ...a, dents: e.target.value } : a,
+                                      ),
+                                    }
+                                  : f,
+                              )
+                            }
+                            className="input text-sm"
+                            placeholder="Dents concernées (ex : 11;12;13)"
+                          />
+                        </div>
+                      );
+                    }
                     return (
                       <div key={act.id} className="flex items-center justify-between py-2">
                         <div className="flex-1">
@@ -180,11 +282,31 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                 )}
 
                 {/* Observations */}
-                {treatment.observations && (
+                {editingId === treatment.id ? (
                   <div className="mt-3 pt-3 border-t border-slate-100">
-                    <div className="text-xs text-slate-500 mb-1">Observations</div>
-                    <div className="text-sm text-slate-700">{treatment.observations}</div>
+                    <label className="label">Observations</label>
+                    <textarea
+                      value={editForm?.observations || ''}
+                      onChange={(e) => setEditForm((f) => (f ? { ...f, observations: e.target.value } : f))}
+                      className="input"
+                      rows={2}
+                    />
+                    <div className="flex justify-end gap-2 mt-3">
+                      <button onClick={cancelEditing} className="btn-ghost" disabled={updateMutation.isPending}>
+                        Annuler
+                      </button>
+                      <button onClick={() => updateMutation.mutate()} className="btn-primary" disabled={updateMutation.isPending}>
+                        {updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  treatment.observations && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <div className="text-xs text-slate-500 mb-1">Observations</div>
+                      <div className="text-sm text-slate-700">{treatment.observations}</div>
+                    </div>
+                  )
                 )}
               </div>
             );
