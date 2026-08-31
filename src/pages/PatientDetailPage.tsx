@@ -188,20 +188,144 @@ function TabBtn({
   );
 }
 
+function patientToFormState(patient: any) {
+  return {
+    nom: patient.nom || '',
+    prenom: patient.prenom || '',
+    dateNaissance: patient.dateNaissance ? String(patient.dateNaissance).slice(0, 10) : '',
+    sexe: (patient.sexe || 'F') as 'M' | 'F',
+    gsm: patient.gsm || '',
+    email: patient.email || '',
+    adresse: patient.adresse || '',
+    ville: patient.ville || '',
+    profession: patient.profession || '',
+    assurance: patient.assurance || '',
+    antecedents: patient.antecedents || '',
+  };
+}
+
 function IdentiteTab({ patient }: { patient: any }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(() => patientToFormState(patient));
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      patientsApi.update(patient.id, {
+        ...form,
+        // Même contrainte que la création : le backend rejette une chaîne vide
+        // pour dateNaissance (@IsDateString()), undefined est accepté.
+        dateNaissance: form.dateNaissance || undefined,
+      }),
+    onSuccess: () => {
+      toast.success('Fiche patient mise à jour');
+      qc.invalidateQueries({ queryKey: ['patient', patient.id] });
+      qc.invalidateQueries({ queryKey: ['patients'] });
+      setEditing(false);
+    },
+    onError: () => toast.error("Erreur lors de l'enregistrement"),
+  });
+
+  function startEditing() {
+    setForm(patientToFormState(patient));
+    setEditing(true);
+  }
+
+  if (!editing) {
+    return (
+      <div>
+        <div className="flex justify-end mb-4">
+          <button className="btn-ghost inline-flex items-center gap-1.5" onClick={startEditing}>
+            <Edit size={14} /> Modifier
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Nom" value={patient.nom} />
+          <Field label="Prénom" value={patient.prenom} />
+          <Field label="Date de naissance" value={formatDate(patient.dateNaissance)} />
+          <Field label="Sexe" value={patient.sexe === 'F' ? 'Femme' : 'Homme'} />
+          <Field label="GSM" value={patient.gsm} />
+          <Field label="Email" value={patient.email} />
+          <Field label="Adresse" value={patient.adresse} full />
+          <Field label="Ville" value={patient.ville} />
+          <Field label="Profession" value={patient.profession} />
+          <Field label="Assurance" value={patient.assurance} />
+          <Field label="Antécédents médicaux" value={patient.antecedents} full />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <Field label="Nom" value={patient.nom} />
-      <Field label="Prénom" value={patient.prenom} />
-      <Field label="Date de naissance" value={formatDate(patient.dateNaissance)} />
-      <Field label="Sexe" value={patient.sexe === 'F' ? 'Femme' : 'Homme'} />
-      <Field label="GSM" value={patient.gsm} />
-      <Field label="Email" value={patient.email} />
-      <Field label="Adresse" value={patient.adresse} full />
-      <Field label="Ville" value={patient.ville} />
-      <Field label="Profession" value={patient.profession} />
-      <Field label="Assurance" value={patient.assurance} />
-      <Field label="Antécédents médicaux" value={patient.antecedents} full />
+    <div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">Nom</label>
+          <input className="input" value={form.nom}
+            onChange={(e) => setForm({ ...form, nom: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Prénom</label>
+          <input className="input" value={form.prenom}
+            onChange={(e) => setForm({ ...form, prenom: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Date de naissance</label>
+          <input type="date" className="input" value={form.dateNaissance}
+            onChange={(e) => setForm({ ...form, dateNaissance: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Sexe</label>
+          <select className="input" value={form.sexe}
+            onChange={(e) => setForm({ ...form, sexe: e.target.value as 'M' | 'F' })}>
+            <option value="F">Femme</option>
+            <option value="M">Homme</option>
+          </select>
+        </div>
+        <div>
+          <label className="label">GSM</label>
+          <input className="input" value={form.gsm}
+            onChange={(e) => setForm({ ...form, gsm: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Email</label>
+          <input className="input" value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </div>
+        <div className="col-span-2">
+          <label className="label">Adresse</label>
+          <input className="input" value={form.adresse}
+            onChange={(e) => setForm({ ...form, adresse: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Ville</label>
+          <input className="input" value={form.ville}
+            onChange={(e) => setForm({ ...form, ville: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Profession</label>
+          <input className="input" value={form.profession}
+            onChange={(e) => setForm({ ...form, profession: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Assurance</label>
+          <input className="input" value={form.assurance}
+            onChange={(e) => setForm({ ...form, assurance: e.target.value })} />
+        </div>
+        <div className="col-span-2">
+          <label className="label">Antécédents médicaux</label>
+          <textarea className="input" rows={3} value={form.antecedents}
+            onChange={(e) => setForm({ ...form, antecedents: e.target.value })} />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <button className="btn-ghost" onClick={() => setEditing(false)} disabled={mutation.isPending}>
+          Annuler
+        </button>
+        <button className="btn-primary" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          {mutation.isPending ? <Spinner size={16} className="text-white" /> : 'Enregistrer'}
+        </button>
+      </div>
     </div>
   );
 }
