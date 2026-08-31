@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { authApi } from '@/api/endpoints';
@@ -105,12 +105,6 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500 mt-6">
-            Pas encore de compte ?{' '}
-            <Link to="/register" className="text-primary-500 font-medium hover:underline">
-              Créer un cabinet
-            </Link>
-          </p>
 
         </div>
       </div>
