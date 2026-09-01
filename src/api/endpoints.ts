@@ -410,3 +410,27 @@ export const financeApi = {
   listPayments: (params?: { from?: string; to?: string; patientId?: number }) =>
     api.get<FinancePayment[]>('/finance/payments', { params }).then((r) => r.data),
 };
+
+// ===== ADMIN (comptes démo) =====
+export interface DemoAccount {
+  cabinetId: number;
+  nomCabinet: string;
+  email: string | null;
+  createdAt: string;
+  demoExpiresAt: string | null;
+  expired: boolean;
+}
+
+export interface CreatedDemoAccount {
+  cabinetId: number;
+  nomCabinet: string;
+  email: string;
+  password: string;
+  demoExpiresAt: string;
+}
+
+export const adminApi = {
+  listDemoAccounts: () => api.get<DemoAccount[]>('/admin/demo-accounts').then((r) => r.data),
+  createDemoAccount: (data: { nomCabinet: string; prenom: string; nom: string; email: string }) =>
+    api.post<CreatedDemoAccount>('/admin/demo-accounts', data).then((r) => r.data),
+};
