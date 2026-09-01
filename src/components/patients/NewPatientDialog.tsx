@@ -16,7 +16,7 @@ export function NewPatientDialog({ open, onClose }: Props) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     numeroDossier: '', nom: '', prenom: '', dateNaissance: '', sexe: 'F' as 'M' | 'F',
-    gsm: '', ville: '',
+    gsm: '', ville: '', reseauSocial: '',
   });
 
   const mutation = useMutation({
@@ -106,6 +106,12 @@ export function NewPatientDialog({ open, onClose }: Props) {
             <label className="label">Ville</label>
             <input className="input" placeholder="Sfax" value={form.ville}
               onChange={(e) => setForm({ ...form, ville: e.target.value })} />
+          </div>
+
+          <div>
+            <label className="label">Réseau social (optionnel)</label>
+            <input className="input" placeholder="Lien Facebook / Instagram..." value={form.reseauSocial}
+              onChange={(e) => setForm({ ...form, reseauSocial: e.target.value })} />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
