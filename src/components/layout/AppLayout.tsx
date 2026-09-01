@@ -20,6 +20,7 @@ import {
   RotateCcw,
   MessageCircle,
   History,
+  UserPlus,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -238,6 +239,16 @@ export function AppLayout() {
             >
               <Settings size={16} />
               Paramètres
+            </NavLink>
+          )}
+          {user?.isPlatformAdmin && (
+            <NavLink
+              to="/admin/demo-accounts"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
+            >
+              <UserPlus size={16} />
+              Comptes démo
             </NavLink>
           )}
           <button
