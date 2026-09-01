@@ -8,10 +8,18 @@ import { Spinner } from '@/components/ui/Spinner';
 import { formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth-store';
 
+type AccountType = 'demo' | 'permanent';
+
 export function DemoAccountsPage() {
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ nomCabinet: '', prenom: '', nom: '', email: '' });
+  const [form, setForm] = useState({
+    nomCabinet: '',
+    prenom: '',
+    nom: '',
+    email: '',
+    type: 'demo' as AccountType,
+  });
   const [created, setCreated] = useState<CreatedDemoAccount | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -25,13 +33,13 @@ export function DemoAccountsPage() {
     mutationFn: () => adminApi.createDemoAccount(form),
     onSuccess: (data) => {
       setCreated(data);
-      setForm({ nomCabinet: '', prenom: '', nom: '', email: '' });
+      setForm({ nomCabinet: '', prenom: '', nom: '', email: '', type: 'demo' });
       setCopied(false);
       queryClient.invalidateQueries({ queryKey: ['demo-accounts'] });
-      toast.success('Compte démo créé');
+      toast.success(data.type === 'permanent' ? 'Compte client créé' : 'Compte démo créé');
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Impossible de créer le compte démo');
+      toast.error(err?.response?.data?.message || 'Impossible de créer le compte');
     },
   });
 
@@ -52,7 +60,11 @@ export function DemoAccountsPage() {
 
   const handleCopy = () => {
     if (!created) return;
-    const text = `Email : ${created.email}\nMot de passe : ${created.password}\nValable jusqu'au ${formatDate(created.demoExpiresAt)} (24h)`;
+    const validite =
+      created.type === 'permanent'
+        ? `Essai gratuit jusqu'au ${formatDate(created.trialEndsAt)} (14 jours)`
+        : `Valable jusqu'au ${formatDate(created.demoExpiresAt)} (24h)`;
+    const text = `Email : ${created.email}\nMot de passe : ${created.password}\n${validite}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -63,62 +75,91 @@ export function DemoAccountsPage() {
       <header className="bg-white border-b border-slate-200 px-6 py-4">
         <h1 className="font-display text-xl font-semibold flex items-center gap-2">
           <UserPlus size={20} className="text-primary-500" />
-          Comptes démo
+          Nouveaux comptes
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Créer un accès de test de 24h pour un nouveau prospect
+          Créer un accès de test (24h) ou un vrai compte client (essai 14 jours)
         </p>
       </header>
 
       <div className="flex-1 overflow-auto p-6 animate-fade-in space-y-6">
         <div className="card p-6">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Nouveau compte démo</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">Nouveau compte</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Nom du cabinet</label>
-              <input
-                className="input"
-                placeholder="Cabinet Dentaire Sfax"
-                value={form.nomCabinet}
-                onChange={(e) => setForm({ ...form, nomCabinet: e.target.value })}
-              />
+              <label className="label">Type de compte</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="type"
+                    checked={form.type === 'demo'}
+                    onChange={() => setForm({ ...form, type: 'demo' })}
+                  />
+                  Démo (24h, pour un essai avant de s'engager)
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="type"
+                    checked={form.type === 'permanent'}
+                    onChange={() => setForm({ ...form, type: 'permanent' })}
+                  />
+                  Client permanent (essai de 14 jours, compte normal)
+                </label>
+              </div>
             </div>
-            <div>
-              <label className="label">Email de connexion</label>
-              <input
-                type="email"
-                className="input"
-                placeholder="prospect@exemple.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Prénom (du praticien)</label>
-              <input
-                className="input"
-                placeholder="Mohamed"
-                value={form.prenom}
-                onChange={(e) => setForm({ ...form, prenom: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Nom (du praticien)</label>
-              <input
-                className="input"
-                placeholder="Ben Salah"
-                value={form.nom}
-                onChange={(e) => setForm({ ...form, nom: e.target.value })}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <button
-                type="submit"
-                disabled={createMutation.isPending}
-                className="btn-primary disabled:opacity-50"
-              >
-                {createMutation.isPending ? 'Création...' : 'Créer le compte démo (24h)'}
-              </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Nom du cabinet</label>
+                <input
+                  className="input"
+                  placeholder="Cabinet Dentaire Sfax"
+                  value={form.nomCabinet}
+                  onChange={(e) => setForm({ ...form, nomCabinet: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Email de connexion</label>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="prospect@exemple.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Prénom (du praticien)</label>
+                <input
+                  className="input"
+                  placeholder="Mohamed"
+                  value={form.prenom}
+                  onChange={(e) => setForm({ ...form, prenom: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Nom (du praticien)</label>
+                <input
+                  className="input"
+                  placeholder="Ben Salah"
+                  value={form.nom}
+                  onChange={(e) => setForm({ ...form, nom: e.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  {createMutation.isPending
+                    ? 'Création...'
+                    : form.type === 'permanent'
+                      ? 'Créer le compte client'
+                      : 'Créer le compte démo (24h)'}
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -149,8 +190,14 @@ export function DemoAccountsPage() {
                 <div className="font-mono">{created.password}</div>
               </div>
               <div>
-                <div className="label">Expire le</div>
-                <div>{formatDate(created.demoExpiresAt)}</div>
+                <div className="label">
+                  {created.type === 'permanent' ? "Fin de l'essai gratuit" : 'Expire le'}
+                </div>
+                <div>
+                  {created.type === 'permanent'
+                    ? formatDate(created.trialEndsAt)
+                    : formatDate(created.demoExpiresAt)}
+                </div>
               </div>
             </div>
           </div>
@@ -198,6 +245,9 @@ export function DemoAccountsPage() {
               </tbody>
             </table>
           )}
+          <p className="text-xs text-slate-400 mt-3">
+            Seuls les comptes démo (24h) apparaissent dans cette liste.
+          </p>
         </div>
       </div>
     </>
