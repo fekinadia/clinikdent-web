@@ -411,7 +411,7 @@ export const financeApi = {
     api.get<FinancePayment[]>('/finance/payments', { params }).then((r) => r.data),
 };
 
-// ===== ADMIN (comptes démo) =====
+// ===== ADMIN (comptes démo et clients) =====
 export interface DemoAccount {
   cabinetId: number;
   nomCabinet: string;
@@ -426,11 +426,13 @@ export interface CreatedDemoAccount {
   nomCabinet: string;
   email: string;
   password: string;
-  demoExpiresAt: string;
+  type: 'demo' | 'permanent';
+  demoExpiresAt: string | null;
+  trialEndsAt: string | null;
 }
 
 export const adminApi = {
   listDemoAccounts: () => api.get<DemoAccount[]>('/admin/demo-accounts').then((r) => r.data),
-  createDemoAccount: (data: { nomCabinet: string; prenom: string; nom: string; email: string }) =>
+  createDemoAccount: (data: { nomCabinet: string; prenom: string; nom: string; email: string; type: 'demo' | 'permanent' }) =>
     api.post<CreatedDemoAccount>('/admin/demo-accounts', data).then((r) => r.data),
 };
