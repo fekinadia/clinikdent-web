@@ -37,6 +37,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
   const [newPrenom, setNewPrenom] = useState('');
   const [newNom, setNewNom] = useState('');
   const [newGsm, setNewGsm] = useState('');
+  const [newReseauSocial, setNewReseauSocial] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [heure, setHeure] = useState('09:00');
   const [duree, setDuree] = useState(30);
@@ -67,6 +68,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
     setNewPrenom('');
     setNewNom('');
     setNewGsm('');
+    setNewReseauSocial('');
     setDate(new Date().toISOString().split('T')[0]);
     setHeure('09:00');
     setDuree(30);
@@ -86,6 +88,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
           nom: newNom.trim(),
           prenom: newPrenom.trim(),
           gsm: newGsm.trim() || undefined,
+          reseauSocial: newReseauSocial.trim() || undefined,
         });
         patientId = created.id;
       }
@@ -177,6 +180,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
                       setNewPrenom('');
                       setNewNom('');
                       setNewGsm('');
+                      setNewReseauSocial('');
                     }}
                     className="text-xs text-primary-600 hover:text-primary-700 font-medium"
                   >
@@ -204,6 +208,13 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
                   value={newGsm}
                   onChange={(e) => setNewGsm(e.target.value)}
                   placeholder="Téléphone (optionnel)"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                />
+                <input
+                  type="text"
+                  value={newReseauSocial}
+                  onChange={(e) => setNewReseauSocial(e.target.value)}
+                  placeholder="Réseau social (optionnel)"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                 />
               </div>
