@@ -15,13 +15,15 @@ export function NewPatientDialog({ open, onClose }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    nom: '', prenom: '', dateNaissance: '', sexe: 'F' as 'M' | 'F',
+    numeroDossier: '', nom: '', prenom: '', dateNaissance: '', sexe: 'F' as 'M' | 'F',
     gsm: '', ville: '',
   });
 
   const mutation = useMutation({
     mutationFn: () => patientsApi.create({
       ...form,
+      // Laissé vide, le numéro de dossier est généré automatiquement côté backend.
+      numeroDossier: form.numeroDossier.trim() || undefined,
       // Le backend valide dateNaissance avec @IsDateString() : une chaîne vide
       // (champ laissé vide dans le formulaire) est rejetée avec une 400,
       // contrairement à undefined qui est accepté par @IsOptional().
@@ -33,7 +35,7 @@ export function NewPatientDialog({ open, onClose }: Props) {
       onClose();
       navigate(`/patients/${patient.id}`);
     },
-    onError: () => toast.error('Erreur lors de la création'),
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Erreur lors de la création'),
   });
 
   if (!open) return null;
@@ -58,6 +60,13 @@ export function NewPatientDialog({ open, onClose }: Props) {
           onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
           className="p-6 space-y-4"
         >
+          <div>
+            <label className="label">N° de dossier</label>
+            <input className="input" maxLength={20} placeholder="Laisser vide pour générer automatiquement"
+              value={form.numeroDossier}
+              onChange={(e) => setForm({ ...form, numeroDossier: e.target.value })} />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Prénom *</label>
