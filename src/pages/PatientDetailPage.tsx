@@ -202,6 +202,7 @@ function patientToFormState(patient: any) {
     profession: patient.profession || '',
     assurance: patient.assurance || '',
     antecedents: patient.antecedents || '',
+    reseauSocial: patient.reseauSocial || '',
   };
 }
 
@@ -254,6 +255,7 @@ function IdentiteTab({ patient }: { patient: any }) {
           <Field label="Profession" value={patient.profession} />
           <Field label="Assurance" value={patient.assurance} />
           <Field label="Antécédents médicaux" value={patient.antecedents} full />
+          <Field label="Réseau social" value={patient.reseauSocial} />
         </div>
       </div>
     );
@@ -324,6 +326,11 @@ function IdentiteTab({ patient }: { patient: any }) {
           <label className="label">Antécédents médicaux</label>
           <textarea className="input" rows={3} value={form.antecedents}
             onChange={(e) => setForm({ ...form, antecedents: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Réseau social</label>
+          <input className="input" placeholder="Lien Facebook / Instagram..." value={form.reseauSocial}
+            onChange={(e) => setForm({ ...form, reseauSocial: e.target.value })} />
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-4">
