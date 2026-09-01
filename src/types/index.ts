@@ -28,6 +28,7 @@ export interface Patient {
   assurance?: string;
   antecedents?: string;
   photoUrl?: string;
+  reseauSocial?: string;
   createdAt: string;
   updatedAt: string;
 }
