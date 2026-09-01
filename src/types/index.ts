@@ -6,6 +6,7 @@ export interface User {
   id: number;
   email: string;
   cabinetId: number;
+  isPlatformAdmin?: boolean;
 }
 
 export interface AuthResponse {
