@@ -190,6 +190,7 @@ function TabBtn({
 
 function patientToFormState(patient: any) {
   return {
+    numeroDossier: patient.numeroDossier || '',
     nom: patient.nom || '',
     prenom: patient.prenom || '',
     dateNaissance: patient.dateNaissance ? String(patient.dateNaissance).slice(0, 10) : '',
@@ -224,7 +225,7 @@ function IdentiteTab({ patient }: { patient: any }) {
       qc.invalidateQueries({ queryKey: ['patients'] });
       setEditing(false);
     },
-    onError: () => toast.error("Erreur lors de l'enregistrement"),
+    onError: (e: any) => toast.error(e?.response?.data?.message || "Erreur lors de l'enregistrement"),
   });
 
   function startEditing() {
@@ -241,6 +242,7 @@ function IdentiteTab({ patient }: { patient: any }) {
           </button>
         </div>
         <div className="grid grid-cols-2 gap-4">
+          <Field label="N° de dossier" value={patient.numeroDossier} />
           <Field label="Nom" value={patient.nom} />
           <Field label="Prénom" value={patient.prenom} />
           <Field label="Date de naissance" value={formatDate(patient.dateNaissance)} />
@@ -260,6 +262,11 @@ function IdentiteTab({ patient }: { patient: any }) {
   return (
     <div>
       <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">N° de dossier</label>
+          <input className="input" required maxLength={20} value={form.numeroDossier}
+            onChange={(e) => setForm({ ...form, numeroDossier: e.target.value })} />
+        </div>
         <div>
           <label className="label">Nom</label>
           <input className="input" value={form.nom}
