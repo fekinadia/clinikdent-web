@@ -250,12 +250,12 @@ function IdentiteTab({ patient }: { patient: any }) {
           <Field label="Sexe" value={patient.sexe === 'F' ? 'Femme' : 'Homme'} />
           <Field label="GSM" value={patient.gsm} />
           <Field label="Email" value={patient.email} />
+          <Field label="Réseau social" value={patient.reseauSocial} />
           <Field label="Adresse" value={patient.adresse} full />
           <Field label="Ville" value={patient.ville} />
           <Field label="Profession" value={patient.profession} />
           <Field label="Assurance" value={patient.assurance} />
           <Field label="Antécédents médicaux" value={patient.antecedents} full />
-          <Field label="Réseau social" value={patient.reseauSocial} />
         </div>
       </div>
     );
@@ -302,6 +302,11 @@ function IdentiteTab({ patient }: { patient: any }) {
           <input className="input" value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
+        <div>
+          <label className="label">Réseau social</label>
+          <input className="input" placeholder="Lien Facebook / Instagram..." value={form.reseauSocial}
+            onChange={(e) => setForm({ ...form, reseauSocial: e.target.value })} />
+        </div>
         <div className="col-span-2">
           <label className="label">Adresse</label>
           <input className="input" value={form.adresse}
@@ -326,11 +331,6 @@ function IdentiteTab({ patient }: { patient: any }) {
           <label className="label">Antécédents médicaux</label>
           <textarea className="input" rows={3} value={form.antecedents}
             onChange={(e) => setForm({ ...form, antecedents: e.target.value })} />
-        </div>
-        <div>
-          <label className="label">Réseau social</label>
-          <input className="input" placeholder="Lien Facebook / Instagram..." value={form.reseauSocial}
-            onChange={(e) => setForm({ ...form, reseauSocial: e.target.value })} />
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-4">
