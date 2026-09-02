@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Calendar, TrendingUp, AlertCircle, ArrowRight } from 'lucide-react';
+import { Users, Calendar, TrendingUp, AlertCircle, ArrowRight, Wallet } from 'lucide-react';
 import { patientsApi, appointmentsApi } from '@/api/endpoints';
 import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
@@ -132,9 +132,9 @@ export function DashboardPage() {
                 <Calendar size={16} className="text-primary-500" />
                 Planning de la semaine
               </Link>
-              <Link to="/prescriptions" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors text-sm">
-                <TrendingUp size={16} className="text-primary-500" />
-                Nouvelle ordonnance
+              <Link to="/finance" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors text-sm">
+                <Wallet size={16} className="text-primary-500" />
+                Facturation
               </Link>
             </div>
           </div>
