@@ -28,6 +28,15 @@ const HOURS = Array.from({ length: 22 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${m}`;
 });
 
+const STATUT_OPTIONS: { value: Appointment['statut']; label: string }[] = [
+  { value: 'planifie', label: 'Planifié' },
+  { value: 'confirme', label: 'Confirmé' },
+  { value: 'en_cours', label: 'En cours' },
+  { value: 'termine', label: 'Terminé' },
+  { value: 'annule', label: 'Annulé' },
+  { value: 'absent', label: 'Absent' },
+];
+
 export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointment }: NewAppointmentDialogProps) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -45,6 +54,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
   const [heure, setHeure] = useState('09:00');
   const [duree, setDuree] = useState(30);
   const [observation, setObservation] = useState('');
+  const [statut, setStatut] = useState<Appointment['statut']>('planifie');
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(patientSearch), 300);
@@ -66,6 +76,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
       setHeure(`${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`);
       setDuree(Math.max(5, Math.round((end.getTime() - start.getTime()) / 60000)));
       setObservation(appointment.observation || '');
+      setStatut(appointment.statut || 'planifie');
     }
   }, [isOpen, appointment]);
 
@@ -88,6 +99,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
     setHeure('09:00');
     setDuree(30);
     setObservation('');
+    setStatut('planifie');
     onClose();
   };
 
@@ -143,6 +155,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
         dateDebut: dateDebut.toISOString(),
         dateFin: dateFin.toISOString(),
         observation: observation || undefined,
+        statut,
       });
     },
     onSuccess: () => {
@@ -379,6 +392,21 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
               ))}
             </select>
           </div>
+
+          {isEditMode && (
+            <div>
+              <label className="block text-xs text-slate-600 mb-1">Statut</label>
+              <select
+                value={statut}
+                onChange={(e) => setStatut(e.target.value as Appointment['statut'])}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
+              >
+                {STATUT_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs text-slate-600 mb-1">Observation (optionnel)</label>
