@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 import { appointmentsApi, patientsApi } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
 import { NewAppointmentDialog } from '@/components/NewAppointmentDialog';
-import type { Patient } from '@/types';
+import type { Patient, Appointment } from '@/types';
 
 const HOURS = Array.from({ length: 22 }, (_, i) => {
   const h = 8 + Math.floor(i / 2);
@@ -19,6 +20,7 @@ export function AgendaPage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogPatient, setDialogPatient] = useState<Patient | null>(null);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
@@ -65,6 +67,11 @@ export function AgendaPage() {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setDialogPatient(null);
+    setEditingAppointment(null);
+  };
+
+  const openEditDialog = (appt: Appointment) => {
+    setEditingAppointment(appt);
   };
 
   return (
@@ -167,7 +174,7 @@ export function AgendaPage() {
                           hourIdx % 2 === 1 ? 'border-b-slate-200' : ''
                         }`}
                       >
-                        {appt && <AppointmentBlock appt={appt} />}
+                        {appt && <AppointmentBlock appt={appt} onEdit={openEditDialog} />}
                       </div>
                     );
                   })}
@@ -178,22 +185,54 @@ export function AgendaPage() {
         </div>
       </div>
 
-      <NewAppointmentDialog isOpen={isDialogOpen} onClose={closeDialog} initialPatient={dialogPatient} />
+      <NewAppointmentDialog
+        isOpen={isDialogOpen || !!editingAppointment}
+        onClose={closeDialog}
+        initialPatient={dialogPatient}
+        appointment={editingAppointment}
+      />
     </>
   );
 }
 
-function AppointmentBlock({ appt }: { appt: any }) {
+function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: Appointment) => void }) {
+  const queryClient = useQueryClient();
   const start = parseISO(appt.dateDebut);
   const end = parseISO(appt.dateFin);
   const durationMin = (end.getTime() - start.getTime()) / 60000;
   const height = (durationMin / 30) * 32;
   const color = appt.type?.couleur || '#3b82f6';
 
+  const deleteMutation = useMutation({
+    mutationFn: () => appointmentsApi.delete(appt.id),
+    onSuccess: () => {
+      toast.success('Rendez-vous supprimé');
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Impossible de supprimer ce rendez-vous');
+    },
+  });
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit(appt);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nom = `${appt.patient?.prenom ?? ''} ${appt.patient?.nom ?? ''}`.trim();
+    if (confirm(`Supprimer le rendez-vous${nom ? ` de ${nom}` : ''} ?`)) {
+      deleteMutation.mutate();
+    }
+  };
+
   return (
     <Link
       to={`/patients/${appt.patientId}`}
-      className="absolute left-0.5 right-0.5 top-0 rounded px-2 py-1 text-[11px] font-medium overflow-hidden cursor-pointer hover:z-10 hover:shadow-md transition-shadow"
+      className="group absolute left-0.5 right-0.5 top-0 rounded px-2 py-1 text-[11px] font-medium overflow-hidden cursor-pointer hover:z-10 hover:shadow-md transition-shadow"
       style={{
         height: `${height - 2}px`,
         background: `${color}22`,
@@ -201,10 +240,31 @@ function AppointmentBlock({ appt }: { appt: any }) {
         color,
       }}
     >
-      <div className="font-semibold truncate">
-        {appt.patient?.prenom} {appt.patient?.nom}
+      <div className="flex items-start justify-between gap-1">
+        <div className="min-w-0">
+          <div className="font-semibold truncate">
+            {appt.patient?.prenom} {appt.patient?.nom}
+          </div>
+          <div className="opacity-75 truncate">{appt.type?.libelle}</div>
+        </div>
+        <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0 bg-white/95 rounded shadow-sm px-0.5 py-0.5">
+          <button
+            onClick={handleEdit}
+            title="Modifier le rendez-vous"
+            className="p-0.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary-600 transition"
+          >
+            <Pencil size={11} />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            title="Supprimer le rendez-vous"
+            className="p-0.5 rounded hover:bg-slate-100 text-slate-500 hover:text-rose-600 transition disabled:opacity-40"
+          >
+            <Trash2 size={11} />
+          </button>
+        </div>
       </div>
-      <div className="opacity-75 truncate">{appt.type?.libelle}</div>
     </Link>
   );
 }
