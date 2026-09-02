@@ -20,7 +20,7 @@ import {
   RotateCcw,
   MessageCircle,
   History,
-  UserPlus,
+  UserPlus, Building2,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -242,6 +242,7 @@ export function AppLayout() {
             </NavLink>
           )}
           {user?.isPlatformAdmin && (
+          <>
             <NavLink
               to="/admin/demo-accounts"
               onClick={() => setMobileMenuOpen(false)}
@@ -250,7 +251,16 @@ export function AppLayout() {
               <UserPlus size={16} />
               Comptes démo
             </NavLink>
-          )}
+            <NavLink
+              to="/admin/accounts"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
+            >
+              <Building2 size={16} />
+              Tous les comptes
+            </NavLink>
+          </>
+        )}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all"
