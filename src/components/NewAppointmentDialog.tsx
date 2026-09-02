@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Save, Search } from 'lucide-react';
+import { X, Save, Search, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { appointmentsApi, patientsApi } from '@/api/endpoints';
 import { useAuthStore } from '@/lib/auth-store';
-import type { Patient } from '@/types';
+import type { Patient, Appointment } from '@/types';
 
 interface NewAppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   initialPatient?: Patient | null;
+  /** Rendez-vous existant à modifier. Si fourni, le dialogue passe en mode édition. */
+  appointment?: Appointment | null;
 }
 
 const DURATIONS = [
@@ -26,9 +28,10 @@ const HOURS = Array.from({ length: 22 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${m}`;
 });
 
-export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewAppointmentDialogProps) {
+export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointment }: NewAppointmentDialogProps) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const isEditMode = !!appointment;
 
   const [patientSearch, setPatientSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -53,6 +56,18 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
       setSelectedPatient(initialPatient);
     }
   }, [isOpen, initialPatient]);
+
+  // Pré-remplit le formulaire avec les infos du rendez-vous à modifier.
+  useEffect(() => {
+    if (isOpen && appointment) {
+      const start = new Date(appointment.dateDebut);
+      const end = new Date(appointment.dateFin);
+      setDate(start.toISOString().split('T')[0]);
+      setHeure(`${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`);
+      setDuree(Math.max(5, Math.round((end.getTime() - start.getTime()) / 60000)));
+      setObservation(appointment.observation || '');
+    }
+  }, [isOpen, appointment]);
 
   const { data: searchResults, isFetching: isSearching } = useQuery({
     queryKey: ['patients-search', debouncedSearch],
@@ -119,7 +134,56 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
     },
   });
 
+  const updateAppointment = useMutation({
+    mutationFn: async () => {
+      if (!appointment) throw new Error('Rendez-vous introuvable');
+      const dateDebut = new Date(`${date}T${heure}:00`);
+      const dateFin = new Date(dateDebut.getTime() + duree * 60000);
+      return appointmentsApi.update(appointment.id, {
+        dateDebut: dateDebut.toISOString(),
+        dateFin: dateFin.toISOString(),
+        observation: observation || undefined,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Rendez-vous modifié');
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      handleClose();
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || error?.message || "Erreur lors de la modification du rendez-vous";
+      toast.error(msg);
+    },
+  });
+
+  const deleteAppointment = useMutation({
+    mutationFn: async () => {
+      if (!appointment) throw new Error('Rendez-vous introuvable');
+      return appointmentsApi.delete(appointment.id);
+    },
+    onSuccess: () => {
+      toast.success('Rendez-vous supprimé');
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      handleClose();
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Impossible de supprimer ce rendez-vous");
+    },
+  });
+
   if (!isOpen) return null;
+
+  const durationOptions = DURATIONS.some((d) => d.value === duree)
+    ? DURATIONS
+    : [...DURATIONS, { value: duree, label: `${duree} min` }].sort((a, b) => a.value - b.value);
+
+  const handleDelete = () => {
+    if (!appointment) return;
+    const nom = `${appointment.patient?.prenom ?? ''} ${appointment.patient?.nom ?? ''}`.trim();
+    if (confirm(`Supprimer le rendez-vous${nom ? ` de ${nom}` : ''} ? Cette action est irréversible.`)) {
+      deleteAppointment.mutate();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -127,9 +191,13 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900" style={{ fontFamily: 'Fraunces, serif' }}>
-              Nouveau rendez-vous
+              {isEditMode ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous'}
             </h2>
-            <p className="text-sm text-slate-500 mt-1">Planifiez un rendez-vous pour un patient</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {isEditMode
+                ? "Ajustez la date, l'heure, la durée ou les notes"
+                : 'Planifiez un rendez-vous pour un patient'}
+            </p>
           </div>
           <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-lg transition" aria-label="Fermer">
             <X className="w-5 h-5 text-slate-500" />
@@ -142,7 +210,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Patient
               </label>
-              {!selectedPatient && !isNewPatient && (
+              {!selectedPatient && !isNewPatient && !isEditMode && (
                 <button
                   type="button"
                   onClick={() => setIsNewPatient(true)}
@@ -153,7 +221,11 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
               )}
             </div>
 
-            {selectedPatient ? (
+            {isEditMode ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-900">
+                {appointment?.patient?.prenom} {appointment?.patient?.nom}
+              </div>
+            ) : selectedPatient ? (
               <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-4 py-2.5">
                 <span className="text-sm font-medium text-slate-900">
                   {selectedPatient.prenom} {selectedPatient.nom}
@@ -302,7 +374,7 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
               onChange={(e) => setDuree(Number(e.target.value))}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
             >
-              {DURATIONS.map((d) => (
+              {durationOptions.map((d) => (
                 <option key={d.value} value={d.value}>{d.label}</option>
               ))}
             </select>
@@ -320,26 +392,44 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient }: NewApp
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3">
-          <button
-            onClick={handleClose}
-            className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition"
-          >
-            Annuler
-          </button>
-          <button
-            onClick={() => createAppointment.mutate()}
-            disabled={createAppointment.isPending}
-            className="px-6 py-2.5 text-white rounded-lg font-medium transition flex items-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: '#0e6ba8' }}
-          >
-            <Save className="w-4 h-4" />
-            {createAppointment.isPending
-              ? 'Création...'
-              : isNewPatient
-              ? 'Créer le patient et le RDV'
-              : 'Créer le rendez-vous'}
-          </button>
+        <div className="p-6 border-t border-slate-100 flex items-center justify-between gap-3">
+          {isEditMode ? (
+            <button
+              onClick={handleDelete}
+              disabled={deleteAppointment.isPending}
+              className="px-4 py-2.5 text-rose-600 hover:bg-rose-50 rounded-lg font-medium transition disabled:opacity-50 flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deleteAppointment.isPending ? 'Suppression...' : 'Supprimer'}
+            </button>
+          ) : (
+            <div />
+          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleClose}
+              className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => (isEditMode ? updateAppointment.mutate() : createAppointment.mutate())}
+              disabled={createAppointment.isPending || updateAppointment.isPending}
+              className="px-6 py-2.5 text-white rounded-lg font-medium transition flex items-center gap-2 disabled:opacity-50"
+              style={{ backgroundColor: '#0e6ba8' }}
+            >
+              <Save className="w-4 h-4" />
+              {isEditMode
+                ? updateAppointment.isPending
+                  ? 'Enregistrement...'
+                  : 'Enregistrer'
+                : createAppointment.isPending
+                ? 'Création...'
+                : isNewPatient
+                ? 'Créer le patient et le RDV'
+                : 'Créer le rendez-vous'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
