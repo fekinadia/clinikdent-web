@@ -450,4 +450,6 @@ export const adminApi = {
   createDemoAccount: (data: { nomCabinet: string; prenom: string; nom: string; email: string; type: 'demo' | 'permanent' }) =>
     api.post<CreatedDemoAccount>('/admin/demo-accounts', data).then((r) => r.data),
   listAllAccounts: () => api.get<AllAccount[]>('/admin/accounts').then((r) => r.data),
+  deleteAccount: (cabinetId: number) =>
+    api.delete<{ success: boolean; cabinetId: number; nomCabinet: string }>(`/admin/accounts/${cabinetId}`).then((r) => r.data),
 };
