@@ -431,8 +431,23 @@ export interface CreatedDemoAccount {
   trialEndsAt: string | null;
 }
 
+export interface AllAccount {
+  cabinetId: number;
+  nomCabinet: string;
+  email: string | null;
+  type: 'demo' | 'permanent';
+  plan: string;
+  subscriptionStatus: string;
+  createdAt: string;
+  demoExpiresAt: string | null;
+  trialEndsAt: string | null;
+  subscriptionEndsAt: string | null;
+  statut: 'actif' | 'expire' | 'essai' | 'essai_termine' | 'abonne';
+}
+
 export const adminApi = {
   listDemoAccounts: () => api.get<DemoAccount[]>('/admin/demo-accounts').then((r) => r.data),
   createDemoAccount: (data: { nomCabinet: string; prenom: string; nom: string; email: string; type: 'demo' | 'permanent' }) =>
     api.post<CreatedDemoAccount>('/admin/demo-accounts', data).then((r) => r.data),
+  listAllAccounts: () => api.get<AllAccount[]>('/admin/accounts').then((r) => r.data),
 };
