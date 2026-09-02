@@ -195,6 +195,15 @@ export function AgendaPage() {
   );
 }
 
+const STATUT_INFO: Record<string, { label: string; dot: string }> = {
+  planifie: { label: 'Planifié', dot: '#94a3b8' },
+  confirme: { label: 'Confirmé', dot: '#0e6ba8' },
+  en_cours: { label: 'En cours', dot: '#d97706' },
+  termine: { label: 'Terminé', dot: '#16a34a' },
+  annule: { label: 'Annulé', dot: '#e11d48' },
+  absent: { label: 'Absent', dot: '#64748b' },
+};
+
 function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: Appointment) => void }) {
   const queryClient = useQueryClient();
   const start = parseISO(appt.dateDebut);
@@ -242,8 +251,13 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
     >
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
-          <div className="font-semibold truncate">
-            {appt.patient?.prenom} {appt.patient?.nom}
+          <div className="font-semibold truncate flex items-center gap-1">
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ background: (STATUT_INFO[appt.statut]?.dot) || '#94a3b8' }}
+              title={STATUT_INFO[appt.statut]?.label || appt.statut}
+            />
+            <span className="truncate">{appt.patient?.prenom} {appt.patient?.nom}</span>
           </div>
           <div className="opacity-75 truncate">{appt.type?.libelle}</div>
         </div>
