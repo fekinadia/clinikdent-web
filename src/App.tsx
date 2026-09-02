@@ -21,6 +21,7 @@ import { PrescriptionsPage } from '@/pages/PrescriptionsPage';
 import { TreatmentsPage, SettingsPage } from '@/pages/PlaceholderPages';
 import { FinancePage } from '@/pages/FinancePage';
 import { DemoAccountsPage } from '@/pages/admin/DemoAccountsPage';
+import { AllAccountsPage } from '@/pages/admin/AllAccountsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +78,7 @@ export function App() {
             <Route path="parametres/abonnement" element={<SubscriptionPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="admin/demo-accounts" element={<DemoAccountsPage />} />
+            <Route path="admin/accounts" element={<AllAccountsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
