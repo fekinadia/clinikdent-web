@@ -93,8 +93,11 @@ export function PatientDetailPage() {
           <div className="flex items-start gap-5">
             <Avatar prenom={patient.prenom} nom={patient.nom} sexe={patient.sexe} size="xl" />
             <div className="flex-1">
-              <h2 className="font-display text-2xl font-semibold">
+                           <h2 className="font-display text-2xl font-semibold flex items-center gap-2">
                 {patient.prenom} {patient.nom}
+                {patient.estProspect && (
+                  <span className="badge badge-warning">Prospect</span>
+                )}
               </h2>
               <div className="text-sm text-slate-500 mt-1">
                 {patient.sexe === 'F' ? 'Femme' : 'Homme'}
