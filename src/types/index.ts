@@ -30,6 +30,7 @@ export interface Patient {
   antecedents?: string;
   photoUrl?: string;
   reseauSocial?: string;
+  estProspect?: boolean;
   createdAt: string;
   updatedAt: string;
 }
