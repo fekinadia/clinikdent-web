@@ -84,11 +84,14 @@ export function PatientsListPage() {
                   {data.items.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4">
-                        <Link to={`/patients/${p.id}`} className="flex items-center gap-3">
+                                                <Link to={`/patients/${p.id}`} className="flex items-center gap-3">
                           <Avatar prenom={p.prenom} nom={p.nom} sexe={p.sexe} size="sm" />
                           <div>
-                            <div className="font-medium text-sm">
+                            <div className="font-medium text-sm flex items-center gap-2">
                               {p.prenom} {p.nom}
+                              {p.estProspect && (
+                                <span className="badge badge-warning">Prospect</span>
+                              )}
                             </div>
                             {p.email && (
                               <div className="text-xs text-slate-500">{p.email}</div>
