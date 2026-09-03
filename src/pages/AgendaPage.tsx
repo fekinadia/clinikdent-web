@@ -76,14 +76,14 @@ export function AgendaPage() {
 
   return (
     <>
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-semibold">Agenda</h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Semaine du {format(weekStart, 'd MMMM', { locale: fr })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
             className="btn-ghost !p-2"
@@ -102,86 +102,92 @@ export function AgendaPage() {
           >
             <ChevronRight size={18} />
           </button>
-          <button className="btn-primary ml-2" onClick={() => setIsDialogOpen(true)}>
+          <button className="btn-primary sm:ml-2" onClick={() => setIsDialogOpen(true)}>
             <Plus size={16} /> Nouveau RDV
           </button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto p-6 animate-fade-in">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 animate-fade-in">
         <div className="card overflow-hidden">
-          {/* En-têtes */}
-          <div
-            className="grid border-b border-slate-200"
-            style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}
-          >
-            <div />
-            {days.map((day) => {
-              const isToday = isSameDay(day, new Date());
-              return (
-                <div
-                  key={day.toISOString()}
-                  className={`p-3 text-center border-l border-slate-200 ${
-                    isToday ? 'bg-primary-50' : ''
-                  }`}
-                >
-                  <div className={`text-xs uppercase tracking-wider font-semibold ${
-                    isToday ? 'text-primary-600' : 'text-slate-500'
-                  }`}>
-                    {format(day, 'EEE', { locale: fr })}
-                  </div>
-                  <div className={`text-lg font-display font-semibold mt-0.5 ${
-                    isToday ? 'text-primary-600' : ''
-                  }`}>
-                    {format(day, 'd')}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Grille */}
-          {isLoading ? (
-            <div className="py-12"><Spinner /></div>
-          ) : (
-            <div
-              className="grid relative"
-              style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}
-            >
-              {HOURS.map((hour, hourIdx) => (
-                <div key={hour} className="contents">
-                  <div className="text-xs text-slate-400 text-right pr-2 py-1.5 border-r border-slate-200 h-8">
-                    {hourIdx % 2 === 0 ? hour : ''}
-                  </div>
-                  {days.map((day, dayIdx) => {
-                    const slotStart = new Date(day);
-                    const [h, m] = hour.split(':').map(Number);
-                    slotStart.setHours(h, m, 0, 0);
-
-                    const appt = appointments?.find((a) => {
-                      const aDate = parseISO(a.dateDebut);
-                      return (
-                        isSameDay(aDate, day) &&
-                        aDate.getHours() === h &&
-                        aDate.getMinutes() === m
-                      );
-                    });
-
-                    return (
-                      <div
-                        key={dayIdx}
-                        className={`h-8 border-b border-l border-slate-100 relative ${
-                          hourIdx % 2 === 1 ? 'border-b-slate-200' : ''
-                        }`}
-                      >
-                        {appt && <AppointmentBlock appt={appt} onEdit={openEditDialog} />}
+          {/* Zone défilable horizontalement sur petit écran : les colonnes
+              gardent une largeur lisible au lieu de s'écraser. */}
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: '640px' }}>
+              {/* En-têtes */}
+              <div
+                className="grid border-b border-slate-200"
+                style={{ gridTemplateColumns: '52px repeat(6, minmax(96px, 1fr))' }}
+              >
+                <div />
+                {days.map((day) => {
+                  const isToday = isSameDay(day, new Date());
+                  return (
+                    <div
+                      key={day.toISOString()}
+                      className={`p-3 text-center border-l border-slate-200 ${
+                        isToday ? 'bg-primary-50' : ''
+                      }`}
+                    >
+                      <div className={`text-xs uppercase tracking-wider font-semibold ${
+                        isToday ? 'text-primary-600' : 'text-slate-500'
+                      }`}>
+                        {format(day, 'EEE', { locale: fr })}
                       </div>
-                    );
-                  })}
+                      <div className={`text-lg font-display font-semibold mt-0.5 ${
+                        isToday ? 'text-primary-600' : ''
+                      }`}>
+                        {format(day, 'd')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Grille */}
+              {isLoading ? (
+                <div className="py-12"><Spinner /></div>
+              ) : (
+                <div
+                  className="grid relative"
+                  style={{ gridTemplateColumns: '52px repeat(6, minmax(96px, 1fr))' }}
+                >
+                  {HOURS.map((hour, hourIdx) => (
+                    <div key={hour} className="contents">
+                      <div className="text-xs text-slate-400 text-right pr-2 py-1.5 border-r border-slate-200 h-8">
+                        {hourIdx % 2 === 0 ? hour : ''}
+                      </div>
+                      {days.map((day, dayIdx) => {
+                        const slotStart = new Date(day);
+                        const [h, m] = hour.split(':').map(Number);
+                        slotStart.setHours(h, m, 0, 0);
+
+                        const appt = appointments?.find((a) => {
+                          const aDate = parseISO(a.dateDebut);
+                          return (
+                            isSameDay(aDate, day) &&
+                            aDate.getHours() === h &&
+                            aDate.getMinutes() === m
+                          );
+                        });
+
+                        return (
+                          <div
+                            key={dayIdx}
+                            className={`h-8 border-b border-l border-slate-100 relative ${
+                              hourIdx % 2 === 1 ? 'border-b-slate-200' : ''
+                            }`}
+                          >
+                            {appt && <AppointmentBlock appt={appt} onEdit={openEditDialog} />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
