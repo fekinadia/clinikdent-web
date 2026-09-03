@@ -8,6 +8,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { PatientsListPage } from '@/pages/PatientsListPage';
 import { PatientDetailPage } from '@/pages/PatientDetailPage';
 import { AgendaPage } from '@/pages/AgendaPage';
+import { GuidePage } from '@/pages/GuidePage';
 import { RecallsPage } from '@/pages/RecallsPage';
 import { AutomationOverviewPage } from '@/pages/automation/AutomationOverviewPage';
 import { AutomationRemindersPage } from '@/pages/automation/AutomationRemindersPage';
@@ -64,6 +65,7 @@ export function App() {
             <Route path="patients" element={<PatientsListPage />} />
             <Route path="patients/:id" element={<PatientDetailPage />} />
             <Route path="agenda" element={<AgendaPage />} />
+            <Route path="guide" element={<GuidePage />} />
             <Route path="recalls" element={<RecallsPage />} />
             <Route path="automatisation" element={<AutomationOverviewPage />} />
             <Route path="automatisation/rappels" element={<AutomationRemindersPage />} />
