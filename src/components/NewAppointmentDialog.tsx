@@ -116,6 +116,9 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
           prenom: newPrenom.trim(),
           gsm: newGsm.trim() || undefined,
           reseauSocial: newReseauSocial.trim() || undefined,
+          // Fiche créée à la volée depuis l'Agenda : simple prospect tant
+          // qu'elle n'est pas modifiée ou que le RDV n'est pas honoré.
+          estProspect: true,
         });
         patientId = created.id;
       }
