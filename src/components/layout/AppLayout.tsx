@@ -23,6 +23,7 @@ import {
   UserPlus, Building2,
   ChevronDown,
   ChevronRight,
+  BookOpen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
@@ -231,6 +232,21 @@ export function AppLayout() {
         </nav>
 
         <div className="p-3 border-t border-white/10">
+          <NavLink
+            to="/guide"
+            onClick={() => setMobileMenuOpen(false)}
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all mb-2',
+                isActive
+                  ? 'bg-gradient-to-r from-primary-500 to-primary-500/0 text-white shadow-[inset_3px_0_0_#14b8a6]'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              )
+            }
+          >
+            <BookOpen size={16} />
+            Guide d'utilisation
+          </NavLink>
           {PARAMETRES_MENU_VISIBLE && (
             <NavLink
               to="/settings"
