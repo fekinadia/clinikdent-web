@@ -69,56 +69,58 @@ export function PatientsListPage() {
             />
           ) : (
             <>
-              <table className="w-full">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-500 tracking-wider">
-                  <tr>
-                    <th className="text-left py-3 px-4 font-semibold">Patient</th>
-                    <th className="text-left py-3 px-4 font-semibold">Dossier</th>
-                    <th className="text-left py-3 px-4 font-semibold">Âge</th>
-                    <th className="text-left py-3 px-4 font-semibold">Téléphone</th>
-                    <th className="text-left py-3 px-4 font-semibold">Ville</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.items.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 px-4">
-                                                <Link to={`/patients/${p.id}`} className="flex items-center gap-3">
-                          <Avatar prenom={p.prenom} nom={p.nom} sexe={p.sexe} size="sm" />
-                          <div>
-                            <div className="font-medium text-sm flex items-center gap-2">
-                              {p.prenom} {p.nom}
-                              {p.estProspect && (
-                                <span className="badge badge-warning">Prospect</span>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500 tracking-wider">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-semibold">Patient</th>
+                      <th className="text-left py-3 px-4 font-semibold">Dossier</th>
+                      <th className="text-left py-3 px-4 font-semibold">Âge</th>
+                      <th className="text-left py-3 px-4 font-semibold">Téléphone</th>
+                      <th className="text-left py-3 px-4 font-semibold">Ville</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {data.items.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-4">
+                          <Link to={`/patients/${p.id}`} className="flex items-center gap-3">
+                            <Avatar prenom={p.prenom} nom={p.nom} sexe={p.sexe} size="sm" />
+                            <div>
+                              <div className="font-medium text-sm flex items-center gap-2">
+                                {p.prenom} {p.nom}
+                                {p.estProspect && (
+                                  <span className="badge badge-warning">Prospect</span>
+                                )}
+                              </div>
+                              {p.email && (
+                                <div className="text-xs text-slate-500">{p.email}</div>
                               )}
                             </div>
-                            {p.email && (
-                              <div className="text-xs text-slate-500">{p.email}</div>
-                            )}
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="py-3 px-4 text-sm font-mono text-slate-600">
-                        N° {p.numeroDossier}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-600">
-                        {calculateAge(p.dateNaissance) ?? '—'} {p.dateNaissance && 'ans'}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-600">{p.gsm || '—'}</td>
-                      <td className="py-3 px-4 text-sm text-slate-600">{p.ville || '—'}</td>
-                      <td className="py-3 px-4 text-right">
-                        <Link
-                          to={`/patients/${p.id}`}
-                          className="text-xs text-primary-500 hover:underline"
-                        >
-                          Ouvrir →
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          </Link>
+                        </td>
+                        <td className="py-3 px-4 text-sm font-mono text-slate-600 whitespace-nowrap">
+                          N° {p.numeroDossier}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-600 whitespace-nowrap">
+                          {calculateAge(p.dateNaissance) ?? '—'} {p.dateNaissance && 'ans'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-600 whitespace-nowrap">{p.gsm || '—'}</td>
+                        <td className="py-3 px-4 text-sm text-slate-600 whitespace-nowrap">{p.ville || '—'}</td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <Link
+                            to={`/patients/${p.id}`}
+                            className="text-xs text-primary-500 hover:underline"
+                          >
+                            Ouvrir →
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Pagination */}
               {data.pageCount > 1 && (
