@@ -12,42 +12,34 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
 import { ToothChart } from '@/components/patients/ToothChart';
 import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/utils';
-
 // Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
 // est retiré de la fiche patient (et du menu). Fonctionnalité et données intactes.
 const ORDONNANCES_TAB_VISIBLE = false;
-
 // Masqué temporairement (Nadia, 2026-08-30) : à la demande de Nadia, en attendant de
 // régler la question du statut professionnel (patente / auto-entrepreneur) nécessaire
 // pour l'envoi de SMS. Fonctionnalité et données intactes, juste retiré de la fiche patient.
 const RAPPELS_TAB_VISIBLE = false;
-
 type Tab = 'identite' | 'soins' | 'schema' | 'finance' | 'images' | 'rappels' | 'ordonnances';
-
 export function PatientDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const patientId = Number(id);
   const [tab, setTab] = useState<Tab>('identite');
-
   const { data: patient, isLoading } = useQuery({
     queryKey: ['patient', patientId],
     queryFn: () => patientsApi.get(patientId),
   });
-
   const { data: treatments } = useQuery({
     queryKey: ['treatments', patientId],
     queryFn: () => treatmentsApi.byPatient(patientId),
     enabled: tab === 'finance',
   });
-
   const { data: finSummary } = useQuery({
     queryKey: ['finSummary', patientId],
     queryFn: () => treatmentsApi.financialSummary(patientId),
     enabled: tab === 'finance',
   });
-
   const deleteMutation = useMutation({
     mutationFn: () => patientsApi.delete(patientId),
     onSuccess: () => {
@@ -56,11 +48,8 @@ export function PatientDetailPage() {
       navigate('/patients');
     },
   });
-
   if (isLoading || !patient) return <div className="p-12"><Spinner /></div>;
-
   const age = calculateAge(patient.dateNaissance);
-
   return (
     <>
       <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4">
@@ -86,7 +75,6 @@ export function PatientDetailPage() {
           <Trash2 size={16} />
         </button>
       </header>
-
       <div className="flex-1 overflow-auto p-6 animate-fade-in">
         {/* Header fiche */}
         <div className="card p-6 mb-6">
@@ -132,7 +120,6 @@ export function PatientDetailPage() {
             </div>
           </div>
         </div>
-
         {/* Tabs */}
         <div className="card overflow-hidden">
           <div className="border-b border-slate-200 px-4 overflow-x-auto">
@@ -158,7 +145,6 @@ export function PatientDetailPage() {
               )}
             </div>
           </div>
-
           <div className="p-6">
             {tab === 'identite' && <IdentiteTab patient={patient} />}
             {tab === 'soins' && <TreatmentsTab patientId={patientId} />}
@@ -173,7 +159,6 @@ export function PatientDetailPage() {
     </>
   );
 }
-
 function TabBtn({
   active, onClick, children,
 }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -190,7 +175,6 @@ function TabBtn({
     </button>
   );
 }
-
 function patientToFormState(patient: any) {
   return {
     numeroDossier: patient.numeroDossier || '',
@@ -208,12 +192,10 @@ function patientToFormState(patient: any) {
     reseauSocial: patient.reseauSocial || '',
   };
 }
-
 function IdentiteTab({ patient }: { patient: any }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => patientToFormState(patient));
-
   const mutation = useMutation({
     mutationFn: () =>
       patientsApi.update(patient.id, {
@@ -231,12 +213,10 @@ function IdentiteTab({ patient }: { patient: any }) {
     },
     onError: (e: any) => toast.error(e?.response?.data?.message || "Erreur lors de l'enregistrement"),
   });
-
   function startEditing() {
     setForm(patientToFormState(patient));
     setEditing(true);
   }
-
   if (!editing) {
     return (
       <div>
@@ -263,7 +243,6 @@ function IdentiteTab({ patient }: { patient: any }) {
       </div>
     );
   }
-
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -310,7 +289,7 @@ function IdentiteTab({ patient }: { patient: any }) {
           <input className="input" placeholder="Lien Facebook / Instagram..." value={form.reseauSocial}
             onChange={(e) => setForm({ ...form, reseauSocial: e.target.value })} />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <label className="label">Adresse</label>
           <input className="input" value={form.adresse}
             onChange={(e) => setForm({ ...form, adresse: e.target.value })} />
@@ -322,78 +301,4 @@ function IdentiteTab({ patient }: { patient: any }) {
         </div>
         <div>
           <label className="label">Profession</label>
-          <input className="input" value={form.profession}
-            onChange={(e) => setForm({ ...form, profession: e.target.value })} />
-        </div>
-        <div>
-          <label className="label">Assurance</label>
-          <input className="input" value={form.assurance}
-            onChange={(e) => setForm({ ...form, assurance: e.target.value })} />
-        </div>
-        <div className="col-span-2">
-          <label className="label">Antécédents médicaux</label>
-          <textarea className="input" rows={3} value={form.antecedents}
-            onChange={(e) => setForm({ ...form, antecedents: e.target.value })} />
-        </div>
-      </div>
-      <div className="flex justify-end gap-2 mt-4">
-        <button className="btn-ghost" onClick={() => setEditing(false)} disabled={mutation.isPending}>
-          Annuler
-        </button>
-        <button className="btn-primary" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-          {mutation.isPending ? <Spinner size={16} className="text-white" /> : 'Enregistrer'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, full }: { label: string; value?: string; full?: boolean }) {
-  return (
-    <div className={full ? 'col-span-2' : ''}>
-      <div className="label">{label}</div>
-      <div className="text-sm text-slate-900 py-2 px-3 bg-slate-50 rounded-md min-h-[36px]">
-        {value || <span className="text-slate-400">—</span>}
-      </div>
-    </div>
-  );
-}
-
-function FinanceTab({ summary, treatments, patientId }: { summary?: any; treatments?: any[]; patientId: number }) {
-  if (!summary) return <Spinner />;
-
-  return (
-    <div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="card p-4 border-slate-200">
-          <div className="label">Total facturé</div>
-          <div className="font-display text-2xl font-semibold mt-1">
-            {formatMoney(summary.total)} <span className="text-sm text-slate-400">DT</span>
-          </div>
-        </div>
-        <div className="card p-4 border-emerald-200 bg-emerald-50/50">
-          <div className="label text-emerald-700">Reçu</div>
-          <div className="font-display text-2xl font-semibold mt-1 text-emerald-700">
-            {formatMoney(summary.recu)} <span className="text-sm text-emerald-500">DT</span>
-          </div>
-        </div>
-        <div className="card p-4 border-slate-200">
-          <div className="label">Remise</div>
-          <div className="font-display text-2xl font-semibold mt-1 text-slate-500">
-            {formatMoney(summary.remise)} <span className="text-sm text-slate-400">DT</span>
-          </div>
-        </div>
-        <div className={`card p-4 ${summary.reste > 0 ? 'border-rose-200 bg-rose-50/50' : 'border-slate-200'}`}>
-          <div className={`label ${summary.reste > 0 ? 'text-rose-700' : ''}`}>
-            Reste à payer
-          </div>
-          <div className={`font-display text-2xl font-semibold mt-1 ${summary.reste > 0 ? 'text-rose-700' : ''}`}>
-            {formatMoney(summary.reste)} <span className="text-sm">DT</span>
-          </div>
-        </div>
-      </div>
-
-      <TreatmentsTab patientId={patientId} />
-    </div>
-  );
-}
+          <input
