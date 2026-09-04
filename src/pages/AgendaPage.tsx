@@ -180,13 +180,15 @@ export function AgendaPage() {
       <div className="flex-1 overflow-auto p-3 sm:p-6 animate-fade-in">
         <div className="card overflow-hidden">
           {viewMode === 'mois' ? (
-            <MonthGrid
-              monthDays={monthDays}
-              currentMonth={currentDate}
-              appointments={appointments}
-              isLoading={isLoading}
-              onSelectDay={goToDay}
-            />
+            <div className="overflow-x-auto">
+              <MonthGrid
+                monthDays={monthDays}
+                currentMonth={currentDate}
+                appointments={appointments}
+                isLoading={isLoading}
+                onSelectDay={goToDay}
+              />
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <HourGrid
@@ -316,7 +318,7 @@ function MonthGrid({
   onSelectDay: (day: Date) => void;
 }) {
   return (
-    <div style={{ minWidth: '640px' }}>
+    <div style={{ minWidth: '360px' }}>
       <div className="grid grid-cols-7 border-b border-slate-200">
         {MONTH_WEEKDAY_LABELS.map((label) => (
           <div
