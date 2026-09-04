@@ -310,7 +310,7 @@ function IdentiteTab({ patient }: { patient: any }) {
           <input className="input" placeholder="Lien Facebook / Instagram..." value={form.reseauSocial}
             onChange={(e) => setForm({ ...form, reseauSocial: e.target.value })} />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <label className="label">Adresse</label>
           <input className="input" value={form.adresse}
             onChange={(e) => setForm({ ...form, adresse: e.target.value })} />
@@ -330,7 +330,7 @@ function IdentiteTab({ patient }: { patient: any }) {
           <input className="input" value={form.assurance}
             onChange={(e) => setForm({ ...form, assurance: e.target.value })} />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <label className="label">Antécédents médicaux</label>
           <textarea className="input" rows={3} value={form.antecedents}
             onChange={(e) => setForm({ ...form, antecedents: e.target.value })} />
@@ -350,7 +350,7 @@ function IdentiteTab({ patient }: { patient: any }) {
 
 function Field({ label, value, full }: { label: string; value?: string; full?: boolean }) {
   return (
-    <div className={full ? 'col-span-2' : ''}>
+    <div className={full ? 'sm:col-span-2' : ''}>
       <div className="label">{label}</div>
       <div className="text-sm text-slate-900 py-2 px-3 bg-slate-50 rounded-md min-h-[36px]">
         {value || <span className="text-slate-400">—</span>}
