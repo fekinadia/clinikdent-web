@@ -437,7 +437,10 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
               style={{ background: (STATUT_INFO[appt.statut]?.dot) || '#94a3b8' }}
               title={STATUT_INFO[appt.statut]?.label || appt.statut}
             />
-            <span className="truncate">{appt.patient?.prenom} {appt.patient?.nom}</span>
+            <span className="truncate">
+              {appt.patient?.prenom} {appt.patient?.nom}
+              {appt.patient?.gsm && <span className="opacity-75"> · {appt.patient.gsm}</span>}
+            </span>
           </div>
           <div className="opacity-75 truncate">{appt.type?.libelle}</div>
         </div>
