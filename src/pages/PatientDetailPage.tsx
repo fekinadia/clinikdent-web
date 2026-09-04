@@ -135,8 +135,8 @@ export function PatientDetailPage() {
 
         {/* Tabs */}
         <div className="card overflow-hidden">
-          <div className="border-b border-slate-200 px-4">
-            <div className="flex gap-1">
+          <div className="border-b border-slate-200 px-4 overflow-x-auto">
+            <div className="flex gap-1 w-max">
               <TabBtn active={tab === 'identite'} onClick={() => setTab('identite')}>
                 Identité
               </TabBtn>
@@ -180,7 +180,7 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+      className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
         active
           ? 'text-primary-500 border-primary-500'
           : 'text-slate-500 border-transparent hover:text-slate-900'
@@ -245,7 +245,7 @@ function IdentiteTab({ patient }: { patient: any }) {
             <Edit size={14} /> Modifier
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="N° de dossier" value={patient.numeroDossier} />
           <Field label="Nom" value={patient.nom} />
           <Field label="Prénom" value={patient.prenom} />
@@ -266,7 +266,7 @@ function IdentiteTab({ patient }: { patient: any }) {
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">N° de dossier</label>
           <input className="input" required maxLength={20} value={form.numeroDossier}
@@ -364,7 +364,7 @@ function FinanceTab({ summary, treatments, patientId }: { summary?: any; treatme
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="card p-4 border-slate-200">
           <div className="label">Total facturé</div>
           <div className="font-display text-2xl font-semibold mt-1">
