@@ -12,6 +12,9 @@ const STATUT_BADGE: Record<NoShowRecovery['statut'], { label: string; className:
   en_attente: { label: 'En attente', className: 'badge-warning' },
   recupere: { label: 'Récupéré', className: 'badge-success' },
   perdu: { label: 'Perdu', className: 'badge-danger' },
+  // STEP 4 — relance invalidée automatiquement (correction du statut
+  // no_show du RDV source avant l'envoi de la relance).
+  annule: { label: 'Annulée (RDV corrigé)', className: 'badge-neutral' },
 };
 
 const FILTER_OPTIONS: { value: NoShowRecovery['statut'] | 'all'; label: string }[] = [
@@ -19,6 +22,7 @@ const FILTER_OPTIONS: { value: NoShowRecovery['statut'] | 'all'; label: string }
   { value: 'en_attente', label: 'En attente' },
   { value: 'recupere', label: 'Récupéré' },
   { value: 'perdu', label: 'Perdu' },
+  { value: 'annule', label: 'Annulée' },
 ];
 
 function getPatient(item: NoShowRecovery): { id: number; nom: string; prenom: string } | null {
@@ -61,6 +65,17 @@ export function AutomationNoShowsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['no-show-recoveries'] });
       toast.success('Marqué comme perdu');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Erreur lors de la mise à jour'),
+  });
+
+  // STEP 4 — complète le workflow de récupération (jusqu'ici seul "perdu"
+  // était implémenté). Le lien vers un nouveau RDV reste optionnel.
+  const markRecoveredMutation = useMutation({
+    mutationFn: (id: number) => noShowRecoveriesApi.markRecovered(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['no-show-recoveries'] });
+      toast.success('Marqué comme récupéré');
     },
     onError: (err: any) => toast.error(err?.response?.data?.message || 'Erreur lors de la mise à jour'),
   });
@@ -138,15 +153,24 @@ export function AutomationNoShowsPage() {
                       <div>
                         <span className={clsx('badge', badge.className)}>{badge.label}</span>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex items-center justify-end gap-2">
                         {item.statut === 'en_attente' && (
-                          <button
-                            onClick={() => markLostMutation.mutate(item.id)}
-                            disabled={markLostMutation.isPending}
-                            className="btn-ghost !px-2 !py-1.5 text-xs whitespace-nowrap"
-                          >
-                            Marquer comme perdu
-                          </button>
+                          <>
+                            <button
+                              onClick={() => markRecoveredMutation.mutate(item.id)}
+                              disabled={markRecoveredMutation.isPending || markLostMutation.isPending}
+                              className="btn-ghost !px-2 !py-1.5 text-xs whitespace-nowrap text-emerald-700"
+                            >
+                              Marquer récupéré
+                            </button>
+                            <button
+                              onClick={() => markLostMutation.mutate(item.id)}
+                              disabled={markLostMutation.isPending || markRecoveredMutation.isPending}
+                              className="btn-ghost !px-2 !py-1.5 text-xs whitespace-nowrap"
+                            >
+                              Marquer comme perdu
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

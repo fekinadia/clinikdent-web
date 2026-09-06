@@ -74,6 +74,12 @@ export const appointmentsApi = {
     api.patch<Appointment>(`/appointments/${id}`, data).then((r) => r.data),
 
   delete: (id: number) => api.delete(`/appointments/${id}`).then((r) => r.data),
+
+  // STEP 4 — endpoint dédié (idempotent côté backend) plutôt que
+  // update(id, { statut: 'no_show' }) : validation métier spécifique et
+  // création automatique de la relance de récupération.
+  markNoShow: (id: number) =>
+    api.post<Appointment>(`/appointments/${id}/no-show`).then((r) => r.data),
 };
 
 // ===== TREATMENTS =====
@@ -260,9 +266,23 @@ export interface StatisticsOverview {
   actesFrequents: { libelle: string; count: number }[];
 }
 
+// STEP 4 — compteurs du tableau de bord automatisation no-show, remplace le
+// placeholder "Bientôt disponible" de AutomationOverviewPage.
+export interface AutomationOverview {
+  noShows: number;
+  relances: {
+    enAttente: number;
+    recupere: number;
+    perdu: number;
+    annule: number;
+  };
+}
+
 export const statisticsApi = {
   overview: (months = 6) =>
     api.get<StatisticsOverview>(`/statistics/overview?months=${months}`).then((r) => r.data),
+  automationOverview: () =>
+    api.get<AutomationOverview>('/statistics/automation-overview').then((r) => r.data),
 };
 
 export interface PrescriptionModele {
@@ -336,7 +356,13 @@ export interface NoShowRecovery {
   id: number;
   appointmentId?: number;
   patientId?: number;
-  statut: 'en_attente' | 'recupere' | 'perdu';
+  // STEP 4 — 'annule' : la relance a été invalidée automatiquement car le
+  // RDV source a été recorrigé hors du statut no_show avant traitement (voir
+  // AutomationEventsListener.handleAppointmentNoShowCorrected côté backend).
+  // Ce n'est jamais une transition manuelle.
+  statut: 'en_attente' | 'recupere' | 'perdu' | 'annule';
+  nouveauAppointmentId?: number | null;
+  nouveauAppointment?: any;
   appointment?: any;
   patient?: any;
   dentiste?: any;
@@ -350,6 +376,12 @@ export const noShowRecoveriesApi = {
     api.get<NoShowRecovery[]>('/no-show-recoveries', { params: { statut } }).then((r) => r.data),
   markAsLost: (id: number) =>
     api.patch<NoShowRecovery>(`/no-show-recoveries/${id}`, { statut: 'perdu' }).then((r) => r.data),
+  // STEP 4 — le patient a repris rendez-vous (ou a été recontacté avec
+  // succès). Le lien vers le nouveau RDV est optionnel.
+  markRecovered: (id: number, nouveauAppointmentId?: number) =>
+    api
+      .patch<NoShowRecovery>(`/no-show-recoveries/${id}/recovered`, { nouveauAppointmentId })
+      .then((r) => r.data),
 };
 
 // ===== RECALLS (automatisation) =====
