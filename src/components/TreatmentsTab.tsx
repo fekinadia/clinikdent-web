@@ -45,7 +45,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
   const [editForm, setEditForm] = useState<{
     dateSoin: string;
     observations: string;
-    acts: { id: number; libelle: string; dents: string }[];
+    acts: { id: number; libelle: string; dents: string; cout: string }[];
   } | null>(null);
 
   const { data: treatments = [], isLoading } = useQuery<Treatment[]>({
@@ -61,7 +61,12 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
     setEditForm({
       dateSoin: treatment.dateSoin.slice(0, 10),
       observations: treatment.observations || '',
-      acts: treatment.acts.map((a) => ({ id: a.id, libelle: a.libelle, dents: a.dents || '' })),
+      acts: treatment.acts.map((a) => ({
+        id: a.id,
+        libelle: a.libelle,
+        dents: a.dents || '',
+        cout: String(a.cout),
+      })),
     });
   }
 
@@ -70,19 +75,49 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
     setEditForm(null);
   }
 
+  // Un prix corrigé en dessous du montant déjà encaissé est refusé côté
+  // backend (voir TreatmentsService.update) pour ne jamais afficher un
+  // "dû" négatif — on prévient ici même, avant l'envoi, pour que
+  // l'utilisateur voie tout de suite pourquoi "Enregistrer" est désactivé
+  // plutôt que de découvrir l'erreur après coup.
+  function findCostTooLow(treatment: Treatment) {
+    if (!editForm) return null;
+    for (const editingAct of editForm.acts) {
+      const original = treatment.acts.find((a) => a.id === editingAct.id);
+      if (!original) continue;
+      const nouveauCout = parseFloat(editingAct.cout);
+      if (Number.isNaN(nouveauCout)) continue;
+      if (nouveauCout < Number(original.montantRecu) - 0.01) {
+        return { libelle: original.libelle, montantRecu: Number(original.montantRecu) };
+      }
+    }
+    return null;
+  }
+
   const updateMutation = useMutation({
     mutationFn: () =>
       api.patch(`/treatments/${editingId}`, {
         dateSoin: editForm?.dateSoin,
         observations: editForm?.observations || undefined,
-        acts: editForm?.acts,
+        acts: editForm?.acts.map((a) => {
+          const cout = parseFloat(a.cout);
+          return {
+            id: a.id,
+            libelle: a.libelle,
+            dents: a.dents,
+            ...(Number.isNaN(cout) ? {} : { cout }),
+          };
+        }),
       }),
     onSuccess: () => {
       toast.success('Séance de soins mise à jour');
       qc.invalidateQueries({ queryKey: ['treatments', patientId] });
       cancelEditing();
     },
-    onError: () => toast.error("Erreur lors de l'enregistrement"),
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || "Erreur lors de l'enregistrement";
+      toast.error(msg);
+    },
   });
 
   return (
@@ -192,26 +227,55 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                     const reste = Number(act.cout) - Number(act.montantRecu) - Number(act.remise || 0);
                     const editingAct = editForm?.acts.find((a) => a.id === act.id);
                     if (editingId === treatment.id && editingAct) {
+                      const nouveauCout = parseFloat(editingAct.cout);
+                      const coutTropBas =
+                        !Number.isNaN(nouveauCout) &&
+                        nouveauCout < Number(act.montantRecu) - 0.01;
                       return (
                         <div key={act.id} className="py-2 space-y-1.5">
-                          <input
-                            type="text"
-                            value={editingAct.libelle}
-                            onChange={(e) =>
-                              setEditForm((f) =>
-                                f
-                                  ? {
-                                      ...f,
-                                      acts: f.acts.map((a) =>
-                                        a.id === act.id ? { ...a, libelle: e.target.value } : a,
-                                      ),
-                                    }
-                                  : f,
-                              )
-                            }
-                            className="input text-sm"
-                            placeholder="Libellé de l'acte"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editingAct.libelle}
+                              onChange={(e) =>
+                                setEditForm((f) =>
+                                  f
+                                    ? {
+                                        ...f,
+                                        acts: f.acts.map((a) =>
+                                          a.id === act.id ? { ...a, libelle: e.target.value } : a,
+                                        ),
+                                      }
+                                    : f,
+                                )
+                              }
+                              className="input text-sm flex-1"
+                              placeholder="Libellé de l'acte"
+                            />
+                            <div className="w-28">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={editingAct.cout}
+                                onChange={(e) =>
+                                  setEditForm((f) =>
+                                    f
+                                      ? {
+                                          ...f,
+                                          acts: f.acts.map((a) =>
+                                            a.id === act.id ? { ...a, cout: e.target.value } : a,
+                                          ),
+                                        }
+                                      : f,
+                                  )
+                                }
+                                className={`input text-sm text-right ${coutTropBas ? 'border-rose-400' : ''}`}
+                                placeholder="Prix (DT)"
+                                title="Prix de l'acte (DT)"
+                              />
+                            </div>
+                          </div>
                           <input
                             type="text"
                             value={editingAct.dents}
@@ -230,6 +294,12 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                             className="input text-sm"
                             placeholder="Dents concernées (ex : 11;12;13)"
                           />
+                          {coutTropBas && (
+                            <p className="text-xs text-rose-600">
+                              Le prix ne peut pas être inférieur au montant déjà encaissé (
+                              {Number(act.montantRecu).toFixed(2)} DT).
+                            </p>
+                          )}
                         </div>
                       );
                     }
@@ -295,7 +365,16 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                       <button onClick={cancelEditing} className="btn-ghost" disabled={updateMutation.isPending}>
                         Annuler
                       </button>
-                      <button onClick={() => updateMutation.mutate()} className="btn-primary" disabled={updateMutation.isPending}>
+                      <button
+                        onClick={() => updateMutation.mutate()}
+                        className="btn-primary"
+                        disabled={updateMutation.isPending || !!findCostTooLow(treatment)}
+                        title={
+                          findCostTooLow(treatment)
+                            ? 'Corrigez le prix trop bas avant d\'enregistrer'
+                            : undefined
+                        }
+                      >
                         {updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
                     </div>
