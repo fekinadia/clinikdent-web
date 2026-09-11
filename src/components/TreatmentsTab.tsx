@@ -45,7 +45,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
   const [editForm, setEditForm] = useState<{
     dateSoin: string;
     observations: string;
-    acts: { id: number; libelle: string; dents: string; cout: string }[];
+    acts: { id: number; libelle: string; dents: string; cout: string; montantRecu: string }[];
   } | null>(null);
 
   const { data: treatments = [], isLoading } = useQuery<Treatment[]>({
@@ -66,6 +66,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
         libelle: a.libelle,
         dents: a.dents || '',
         cout: String(a.cout),
+        montantRecu: String(a.montantRecu),
       })),
     });
   }
@@ -75,20 +76,43 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
     setEditForm(null);
   }
 
-  // Un prix corrigé en dessous du montant déjà encaissé est refusé côté
-  // backend (voir TreatmentsService.update) pour ne jamais afficher un
-  // "dû" négatif — on prévient ici même, avant l'envoi, pour que
-  // l'utilisateur voie tout de suite pourquoi "Enregistrer" est désactivé
-  // plutôt que de découvrir l'erreur après coup.
+  // Les deux règles ci-dessous sont revalidées côté backend sur les valeurs
+  // finales (voir TreatmentsService.update) — on prévient ici même, avant
+  // l'envoi, pour que l'utilisateur voie tout de suite pourquoi
+  // "Enregistrer" est désactivé plutôt que de découvrir l'erreur après coup.
+  // Un prix corrigé en dessous du montant encaissé (final) ferait apparaître
+  // un "dû" négatif ; un montant encaissé corrigé au-dessus du prix (final)
+  // moins la remise ferait apparaître un trop-perçu.
   function findCostTooLow(treatment: Treatment) {
     if (!editForm) return null;
     for (const editingAct of editForm.acts) {
       const original = treatment.acts.find((a) => a.id === editingAct.id);
       if (!original) continue;
       const nouveauCout = parseFloat(editingAct.cout);
+      const nouveauMontantRecu = parseFloat(editingAct.montantRecu);
+      const montantRecuFinal = Number.isNaN(nouveauMontantRecu)
+        ? Number(original.montantRecu)
+        : nouveauMontantRecu;
       if (Number.isNaN(nouveauCout)) continue;
-      if (nouveauCout < Number(original.montantRecu) - 0.01) {
-        return { libelle: original.libelle, montantRecu: Number(original.montantRecu) };
+      if (nouveauCout < montantRecuFinal - 0.01) {
+        return { libelle: original.libelle, montantRecu: montantRecuFinal };
+      }
+    }
+    return null;
+  }
+
+  function findReceivedTooHigh(treatment: Treatment) {
+    if (!editForm) return null;
+    for (const editingAct of editForm.acts) {
+      const original = treatment.acts.find((a) => a.id === editingAct.id);
+      if (!original) continue;
+      const nouveauMontantRecu = parseFloat(editingAct.montantRecu);
+      const nouveauCout = parseFloat(editingAct.cout);
+      const coutFinal = Number.isNaN(nouveauCout) ? Number(original.cout) : nouveauCout;
+      if (Number.isNaN(nouveauMontantRecu)) continue;
+      const plafond = coutFinal - Number(original.remise || 0);
+      if (nouveauMontantRecu > plafond + 0.01) {
+        return { libelle: original.libelle, plafond };
       }
     }
     return null;
@@ -101,11 +125,13 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
         observations: editForm?.observations || undefined,
         acts: editForm?.acts.map((a) => {
           const cout = parseFloat(a.cout);
+          const montantRecu = parseFloat(a.montantRecu);
           return {
             id: a.id,
             libelle: a.libelle,
             dents: a.dents,
             ...(Number.isNaN(cout) ? {} : { cout }),
+            ...(Number.isNaN(montantRecu) ? {} : { montantRecu }),
           };
         }),
       }),
@@ -228,9 +254,17 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                     const editingAct = editForm?.acts.find((a) => a.id === act.id);
                     if (editingId === treatment.id && editingAct) {
                       const nouveauCout = parseFloat(editingAct.cout);
+                      const nouveauMontantRecu = parseFloat(editingAct.montantRecu);
+                      const montantRecuFinal = Number.isNaN(nouveauMontantRecu)
+                        ? Number(act.montantRecu)
+                        : nouveauMontantRecu;
+                      const coutFinal = Number.isNaN(nouveauCout) ? Number(act.cout) : nouveauCout;
+                      const plafondEncaisse = coutFinal - Number(act.remise || 0);
                       const coutTropBas =
-                        !Number.isNaN(nouveauCout) &&
-                        nouveauCout < Number(act.montantRecu) - 0.01;
+                        !Number.isNaN(nouveauCout) && nouveauCout < montantRecuFinal - 0.01;
+                      const montantTropHaut =
+                        !Number.isNaN(nouveauMontantRecu) &&
+                        nouveauMontantRecu > plafondEncaisse + 0.01;
                       return (
                         <div key={act.id} className="py-2 space-y-1.5">
                           <div className="flex items-center gap-2">
@@ -252,7 +286,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                               className="input text-sm flex-1"
                               placeholder="Libellé de l'acte"
                             />
-                            <div className="w-28">
+                            <div className="w-24">
                               <input
                                 type="number"
                                 min="0"
@@ -273,6 +307,29 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                                 className={`input text-sm text-right ${coutTropBas ? 'border-rose-400' : ''}`}
                                 placeholder="Prix (DT)"
                                 title="Prix de l'acte (DT)"
+                              />
+                            </div>
+                            <div className="w-24">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={editingAct.montantRecu}
+                                onChange={(e) =>
+                                  setEditForm((f) =>
+                                    f
+                                      ? {
+                                          ...f,
+                                          acts: f.acts.map((a) =>
+                                            a.id === act.id ? { ...a, montantRecu: e.target.value } : a,
+                                          ),
+                                        }
+                                      : f,
+                                  )
+                                }
+                                className={`input text-sm text-right ${montantTropHaut ? 'border-rose-400' : ''}`}
+                                placeholder="Payé (DT)"
+                                title="Montant encaissé (DT)"
                               />
                             </div>
                           </div>
@@ -296,8 +353,12 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                           />
                           {coutTropBas && (
                             <p className="text-xs text-rose-600">
-                              Le prix ne peut pas être inférieur au montant déjà encaissé (
-                              {Number(act.montantRecu).toFixed(2)} DT).
+                              Le prix ne peut pas être inférieur au montant encaissé ({montantRecuFinal.toFixed(2)} DT).
+                            </p>
+                          )}
+                          {montantTropHaut && (
+                            <p className="text-xs text-rose-600">
+                              Le montant encaissé ne peut pas dépasser le prix{Number(act.remise || 0) > 0 ? ' moins la remise' : ''} ({plafondEncaisse.toFixed(2)} DT).
                             </p>
                           )}
                         </div>
@@ -368,11 +429,17 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                       <button
                         onClick={() => updateMutation.mutate()}
                         className="btn-primary"
-                        disabled={updateMutation.isPending || !!findCostTooLow(treatment)}
+                        disabled={
+                          updateMutation.isPending ||
+                          !!findCostTooLow(treatment) ||
+                          !!findReceivedTooHigh(treatment)
+                        }
                         title={
                           findCostTooLow(treatment)
                             ? 'Corrigez le prix trop bas avant d\'enregistrer'
-                            : undefined
+                            : findReceivedTooHigh(treatment)
+                              ? 'Corrigez le montant encaissé trop élevé avant d\'enregistrer'
+                              : undefined
                         }
                       >
                         {updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
