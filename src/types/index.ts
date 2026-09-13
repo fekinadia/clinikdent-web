@@ -72,7 +72,7 @@ export interface Appointment {
   typeId?: number;
   dateDebut: string;
   dateFin: string;
-  statut: 'planifie' | 'confirme' | 'en_cours' | 'termine' | 'annule' | 'absent';
+  statut: 'planifie' | 'confirme' | 'en_cours' | 'termine' | 'annule' | 'absent' | 'no_show';
   observation?: string;
   patient?: Pick<Patient, 'id' | 'nom' | 'prenom' | 'gsm'>;
   type?: AppointmentType;
