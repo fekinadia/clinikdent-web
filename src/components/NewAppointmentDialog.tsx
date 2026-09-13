@@ -187,6 +187,26 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
     },
   });
 
+  // STEP 4 — action dédiée (endpoint POST /appointments/:id/no-show),
+  // volontairement distincte du menu déroulant "Statut" ci-dessous : la
+  // validation métier (RDV pas déjà résolu) et l'idempotence sont gérées
+  // côté backend par cet endpoint spécifique, pas par le PATCH générique.
+  const markNoShow = useMutation({
+    mutationFn: async () => {
+      if (!appointment) throw new Error('Rendez-vous introuvable');
+      return appointmentsApi.markNoShow(appointment.id);
+    },
+    onSuccess: (updated) => {
+      toast.success('Rendez-vous marqué comme no-show');
+      setStatut(updated.statut);
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      handleClose();
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Impossible de marquer ce rendez-vous comme no-show');
+    },
+  });
+
   if (!isOpen) return null;
 
   const durationOptions = DURATIONS.some((d) => d.value === duree)
@@ -408,6 +428,23 @@ export function NewAppointmentDialog({ isOpen, onClose, initialPatient, appointm
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
+
+              {/* STEP 4 — action dédiée, séparée du menu ci-dessus (voir markNoShow) */}
+              {(statut as string) !== 'no_show' && statut !== 'annule' && statut !== 'termine' && (
+                <button
+                  type="button"
+                  onClick={() => markNoShow.mutate()}
+                  disabled={markNoShow.isPending}
+                  className="mt-2 text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                >
+                  {markNoShow.isPending ? 'Marquage en cours...' : 'Marquer comme no-show'}
+                </button>
+              )}
+              {(statut as string) === 'no_show' && (
+                <p className="mt-2 text-xs text-rose-600 font-medium">
+                  Ce rendez-vous est marqué no-show.
+                </p>
+              )}
             </div>
           )}
 

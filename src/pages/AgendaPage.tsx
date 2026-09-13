@@ -218,7 +218,13 @@ const STATUT_INFO: Record<string, { label: string; dot: string }> = {
   en_cours: { label: 'En cours', dot: '#d97706' },
   termine: { label: 'Terminé', dot: '#16a34a' },
   annule: { label: 'Annulé', dot: '#e11d48' },
+  // 'absent' : ancien statut, conservé pour l'historique uniquement (voir
+  // STEP 4) — plus jamais utilisé pour un nouveau rendez-vous, mais un RDV
+  // ancien peut encore l'avoir.
   absent: { label: 'Absent', dot: '#64748b' },
+  // STEP 4 — statut officiel de rendez-vous manqué (détection automatique
+  // ou marquage manuel via l'action dédiée).
+  no_show: { label: 'No-show', dot: '#b91c1c' },
 };
 
 /** Grille horaire (08:00-18:30) utilisée pour les vues Jour et Semaine. */
