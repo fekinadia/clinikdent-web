@@ -8,6 +8,7 @@ import {
   Activity,
   FileText,
   Wallet,
+  Receipt,
   BarChart3,
   CreditCard,
   LogOut,
@@ -64,6 +65,7 @@ const navItems = [
   { to: '/treatments', icon: Activity, label: 'Soins' },
   { to: '/prescriptions', icon: FileText, label: 'Ordonnances' },
   { to: '/finance', icon: Wallet, label: 'Facturation' },
+  { to: '/expenses', icon: Receipt, label: 'Dépenses' },
   { to: '/stats', icon: BarChart3, label: 'Statistiques' },
   { to: '/parametres/abonnement', icon: CreditCard, label: 'Abonnement' },
 ];
@@ -292,25 +294,4 @@ export function AppLayout() {
               {user?.email?.[0]?.toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-white text-sm font-medium truncate">
-                {user?.email}
-              </div>
-              <div className="text-white/50 text-[11px]">Médecin</div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* MAIN */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="md:hidden flex items-center gap-3 bg-primary-900 text-white px-4 py-3 flex-shrink-0">
-          <button onClick={() => setMobileMenuOpen(true)} className="text-white/80 hover:text-white">
-            <Menu size={22} />
-          </button>
-          <span className="font-display font-semibold">ClinikDent</span>
-        </div>
-        <Outlet />
-      </main>
-    </div>
-  );
-}
+              <div
