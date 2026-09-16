@@ -443,6 +443,56 @@ export const financeApi = {
     api.get<FinancePayment[]>('/finance/payments', { params }).then((r) => r.data),
 };
 
+// ===== EXPENSES (dépenses du cabinet) =====
+export interface Expense {
+  id: number;
+  cabinetId: number;
+  categorie: string | null;
+  libelle: string;
+  montant: number;
+  dateDepense: string;
+  fournisseur: string | null;
+  justificatif: string | null;
+  createdById: number | null;
+  createdAt: string;
+}
+
+export interface ExpensesOverview {
+  total: number;
+  parCategorie: { categorie: string; total: number }[];
+}
+
+export const expensesApi = {
+  list: (params?: { from?: string; to?: string; categorie?: string }) =>
+    api.get<Expense[]>('/expenses', { params }).then((r) => r.data),
+
+  getOverview: (months?: number) =>
+    api.get<ExpensesOverview>('/expenses/overview', { params: { months } }).then((r) => r.data),
+
+  create: (data: {
+    libelle: string;
+    montant: number;
+    dateDepense: string;
+    categorie?: string;
+    fournisseur?: string;
+    justificatif?: string;
+  }) => api.post<Expense>('/expenses', data).then((r) => r.data),
+
+  update: (
+    id: number,
+    data: Partial<{
+      libelle: string;
+      montant: number;
+      dateDepense: string;
+      categorie: string;
+      fournisseur: string;
+      justificatif: string;
+    }>,
+  ) => api.patch<Expense>(`/expenses/${id}`, data).then((r) => r.data),
+
+  delete: (id: number) => api.delete(`/expenses/${id}`).then((r) => r.data),
+};
+
 // ===== ADMIN (comptes démo et clients) =====
 export interface DemoAccount {
   cabinetId: number;
