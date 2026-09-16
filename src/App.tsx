@@ -21,6 +21,7 @@ import { StatisticsPage } from '@/pages/StatisticsPage';
 import { PrescriptionsPage } from '@/pages/PrescriptionsPage';
 import { TreatmentsPage, SettingsPage } from '@/pages/PlaceholderPages';
 import { FinancePage } from '@/pages/FinancePage';
+import { ExpensesPage } from '@/pages/ExpensesPage';
 import { DemoAccountsPage } from '@/pages/admin/DemoAccountsPage';
 import { AllAccountsPage } from '@/pages/admin/AllAccountsPage';
 
@@ -76,6 +77,7 @@ export function App() {
             <Route path="treatments" element={<TreatmentsPage />} />
             <Route path="prescriptions" element={<PrescriptionsPage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route path="expenses" element={<ExpensesPage />} />
             <Route path="stats" element={<StatisticsPage />} />
             <Route path="parametres/abonnement" element={<SubscriptionPage />} />
             <Route path="settings" element={<SettingsPage />} />
