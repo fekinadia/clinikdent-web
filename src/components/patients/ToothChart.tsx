@@ -1,12 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import toast from 'react-hot-toast';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Droplet,
+  Crown,
+  XCircle,
+  MousePointerClick,
+  ClipboardList,
+  Info,
+} from 'lucide-react';
 import { treatmentsApi } from '@/api/endpoints';
 import type { ToothEtat } from '@/types';
 import { Spinner } from '@/components/ui/Spinner';
 
-const UPPER_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const LOWER_TEETH = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+// ===== Numérotation FDI =====
+const PERM_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+const PERM_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+const PRIM_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
+const PRIM_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
+const ALL_PERM = [...PERM_UPPER, ...PERM_LOWER];
+const ALL_PRIM = [...PRIM_UPPER, ...PRIM_LOWER];
+const ALL_TEETH = [...ALL_PERM, ...ALL_PRIM];
+
+const isPrimary = (n: number) => n >= 51;
+
+// Secteurs FDI (dents permanentes) — utilisés par le panneau « Contrôles »
+const SEXTANTS: { label: string; teeth: number[] }[] = [
+  { label: 'Secteur 1', teeth: [18, 17, 16, 15, 14] },
+  { label: 'Secteur 2', teeth: [13, 12, 11, 21, 22, 23] },
+  { label: 'Secteur 3', teeth: [24, 25, 26, 27, 28] },
+  { label: 'Secteur 4', teeth: [38, 37, 36, 35, 34] },
+  { label: 'Secteur 5', teeth: [33, 32, 31, 41, 42, 43] },
+  { label: 'Secteur 6', teeth: [44, 45, 46, 47, 48] },
+];
 
 const ETATS: { value: ToothEtat; label: string; color: string }[] = [
   { value: 'saine', label: 'Saine', color: '#cbd5e1' },
@@ -21,47 +52,183 @@ const ETATS: { value: ToothEtat; label: string; color: string }[] = [
   { value: 'a_traiter', label: 'À traiter', color: '#fbbf24' },
 ];
 
+// Barre d'action rapide : les 5 états les plus courants, en icônes
+const QUICK_ETATS: { value: ToothEtat; label: string; Icon: typeof CheckCircle2 }[] = [
+  { value: 'saine', label: 'Saine', Icon: CheckCircle2 },
+  { value: 'carie', label: 'Carie', Icon: AlertTriangle },
+  { value: 'obturation', label: 'Obturation', Icon: Droplet },
+  { value: 'couronne', label: 'Couronne', Icon: Crown },
+  { value: 'extraction', label: 'Extraction', Icon: XCircle },
+];
+
+type ToothUpdate = { dentNumero: number; etat: ToothEtat; notes?: string };
+const withEtat = (teeth: number[], etat: ToothEtat, notes?: string): ToothUpdate[] =>
+  teeth.map((n) => ({ dentNumero: n, etat, notes }));
+
 interface Props {
   patientId: number;
 }
 
 export function ToothChart({ patientId }: Props) {
   const qc = useQueryClient();
-  const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [pendingEtat, setPendingEtat] = useState<ToothEtat>('saine');
+  const [confirmingPreset, setConfirmingPreset] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState('');
 
   const { data: states, isLoading } = useQuery({
     queryKey: ['tooth-chart', patientId],
     queryFn: () => treatmentsApi.toothChart(patientId),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ dentNumero, etat }: { dentNumero: number; etat: ToothEtat }) =>
-      treatmentsApi.updateTooth(patientId, dentNumero, etat),
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['tooth-chart', patientId] });
+
+  const singleMutation = useMutation({
+    mutationFn: ({ dentNumero, etat, notes }: ToothUpdate) =>
+      treatmentsApi.updateTooth(patientId, dentNumero, etat, notes),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['tooth-chart', patientId] });
+      invalidate();
+      toast.success('Dent mise à jour');
     },
     onError: () => toast.error('Erreur lors de la modification'),
   });
 
-  const getEtat = (dentNumero: number): ToothEtat => {
-    return (states?.find((s) => s.dentNumero === dentNumero)?.etat as ToothEtat) || 'saine';
-  };
+  const bulkMutation = useMutation({
+    mutationFn: async (updates: ToothUpdate[]) => {
+      await Promise.all(
+        updates.map((u) => treatmentsApi.updateTooth(patientId, u.dentNumero, u.etat, u.notes)),
+      );
+      return updates.length;
+    },
+    onSuccess: (count) => {
+      invalidate();
+      toast.success(`${count} dent(s) mise(s) à jour`);
+    },
+    onError: () => toast.error('Erreur lors de la mise à jour groupée'),
+  });
 
-  const getColor = (etat: ToothEtat) =>
-    ETATS.find((e) => e.value === etat)?.color || '#cbd5e1';
+  const getState = (n: number) => states?.find((s) => s.dentNumero === n);
+  const getEtat = (n: number): ToothEtat => (getState(n)?.etat as ToothEtat) || 'saine';
+  const getColor = (etat: ToothEtat) => ETATS.find((e) => e.value === etat)?.color || '#cbd5e1';
 
-  const handleSetEtat = (etat: ToothEtat) => {
-    if (selectedTooth) {
-      updateMutation.mutate({ dentNumero: selectedTooth, etat });
+  const soleSelected = selected.size === 1 ? Array.from(selected)[0] : null;
+
+  useEffect(() => {
+    if (soleSelected != null) {
+      setNotesDraft(getState(soleSelected)?.notes || '');
     }
+    // On ne resynchronise le brouillon que lorsqu'on change de dent sélectionnée,
+    // pas à chaque refetch (pour ne pas écraser une note en cours de frappe).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [soleSelected]);
+
+  const toggleTooth = (n: number, e: ReactMouseEvent) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (e.metaKey || e.ctrlKey) {
+        if (next.has(n)) next.delete(n);
+        else next.add(n);
+      } else {
+        next.clear();
+        next.add(n);
+      }
+      return next;
+    });
   };
+
+  const selectSet = (teeth: number[]) => setSelected(new Set(teeth));
+  const clearSelection = () => setSelected(new Set());
+
+  const applyEtatToSelection = (etat: ToothEtat) => {
+    if (selected.size === 0) {
+      toast.error('Sélectionnez au moins une dent');
+      return;
+    }
+    bulkMutation.mutate(withEtat(Array.from(selected), etat));
+  };
+
+  const runPreset = (key: string, action: () => void) => {
+    if (confirmingPreset !== key) {
+      setConfirmingPreset(key);
+      setTimeout(() => setConfirmingPreset((c) => (c === key ? null : c)), 4000);
+      return;
+    }
+    setConfirmingPreset(null);
+    action();
+  };
+
+  // Ces 4 préréglages reproduisent l'esprit du panneau « Statuts » observé sur
+  // la démo Dentalis. Leur logique exacte (quelles dents deviennent quoi)
+  // n'étant pas documentée côté Dentalis, il s'agit d'une approximation
+  // clinique raisonnable, ajustable si elle ne correspond pas à l'usage réel.
+  const presets: { key: string; label: string; action: () => void }[] = [
+    {
+      key: 'reset',
+      label: 'Réinitialiser la bouche',
+      action: () => bulkMutation.mutate(withEtat(ALL_TEETH, 'saine', '')),
+    },
+    {
+      key: 'primaire',
+      label: 'Denture primaire',
+      action: () =>
+        bulkMutation.mutate([...withEtat(ALL_PRIM, 'saine'), ...withEtat(ALL_PERM, 'absente')]),
+    },
+    {
+      key: 'mixte',
+      label: 'Denture mixte',
+      action: () => {
+        const permErupted = [11, 12, 21, 22, 31, 32, 41, 42, 16, 26, 36, 46];
+        const primGone = [51, 52, 61, 62, 71, 72, 81, 82];
+        const primRemaining = ALL_PRIM.filter((n) => !primGone.includes(n));
+        const permRemaining = ALL_PERM.filter((n) => !permErupted.includes(n));
+        bulkMutation.mutate([
+          ...withEtat(permErupted, 'saine'),
+          ...withEtat(primGone, 'absente'),
+          ...withEtat(primRemaining, 'saine'),
+          ...withEtat(permRemaining, 'absente'),
+        ]);
+      },
+    },
+    {
+      key: 'edente',
+      label: 'Édenté',
+      action: () => bulkMutation.mutate(withEtat(ALL_TEETH, 'absente')),
+    },
+  ];
+
+  const controlActions: { label: string; action: () => void }[] = [
+    { label: 'Tout sélectionner', action: () => selectSet(ALL_TEETH) },
+    { label: 'Aucune sélection', action: clearSelection },
+    { label: 'Arcade supérieure', action: () => selectSet([...PERM_UPPER, ...PRIM_UPPER]) },
+    { label: 'Arcade inférieure', action: () => selectSet([...PERM_LOWER, ...PRIM_LOWER]) },
+    { label: 'Dents permanentes', action: () => selectSet(ALL_PERM) },
+    { label: 'Dents de lait', action: () => selectSet(ALL_PRIM) },
+    ...SEXTANTS.map((s) => ({ label: s.label, action: () => selectSet(s.teeth) })),
+  ];
 
   if (isLoading) return <div className="py-12"><Spinner /></div>;
 
-  const selectedEtat = selectedTooth ? getEtat(selectedTooth) : null;
-
   return (
     <div>
+      {/* Barre d'action rapide */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold mr-1">
+          Action rapide
+        </span>
+        {QUICK_ETATS.map(({ value, label, Icon }) => (
+          <button
+            key={value}
+            onClick={() => applyEtatToSelection(value)}
+            disabled={bulkMutation.isPending}
+            title={label}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 bg-white hover:border-accent-400 hover:text-accent-600 transition-colors disabled:opacity-50"
+          >
+            <Icon size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Légende */}
       <div className="flex flex-wrap gap-2 mb-6">
         {ETATS.map((e) => (
@@ -77,104 +244,259 @@ export function ToothChart({ patientId }: Props) {
       </div>
 
       {/* Schéma */}
-      <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 items-center overflow-x-auto">
-        {/* Maxillaire */}
-        <div>
-          <div className="text-xs text-center text-slate-500 mb-2 uppercase tracking-wider font-semibold">
-            Maxillaire (haut)
-          </div>
-          <div className="flex gap-1">
-            {UPPER_TEETH.map((n) => (
-              <Tooth
-                key={n}
-                num={n}
-                etat={getEtat(n)}
-                color={getColor(getEtat(n))}
-                isUpper
-                isSelected={selectedTooth === n}
-                onClick={() => setSelectedTooth(n)}
-              />
-            ))}
-          </div>
+      <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col gap-2 items-center overflow-x-auto">
+        <div className="text-xs text-center text-slate-500 mb-1 uppercase tracking-wider font-semibold">
+          Maxillaire (haut)
+        </div>
+        <div className="flex gap-1">
+          {PERM_UPPER.map((n) => (
+            <Tooth
+              key={n}
+              num={n}
+              etat={getEtat(n)}
+              color={getColor(getEtat(n))}
+              isUpper
+              size="lg"
+              isSelected={selected.has(n)}
+              onClick={(e) => toggleTooth(n, e)}
+            />
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {PRIM_UPPER.map((n) => (
+            <Tooth
+              key={n}
+              num={n}
+              etat={getEtat(n)}
+              color={getColor(getEtat(n))}
+              isUpper
+              size="sm"
+              isSelected={selected.has(n)}
+              onClick={(e) => toggleTooth(n, e)}
+            />
+          ))}
         </div>
 
-        {/* Mandibule */}
-        <div>
-          <div className="flex gap-1">
-            {LOWER_TEETH.map((n) => (
-              <Tooth
-                key={n}
-                num={n}
-                etat={getEtat(n)}
-                color={getColor(getEtat(n))}
-                isUpper={false}
-                isSelected={selectedTooth === n}
-                onClick={() => setSelectedTooth(n)}
-              />
-            ))}
-          </div>
-          <div className="text-xs text-center text-slate-500 mt-2 uppercase tracking-wider font-semibold">
-            Mandibule (bas)
-          </div>
+        <div className="w-full max-w-xs border-t border-dashed border-slate-300 my-2" />
+
+        <div className="flex gap-1">
+          {PRIM_LOWER.map((n) => (
+            <Tooth
+              key={n}
+              num={n}
+              etat={getEtat(n)}
+              color={getColor(getEtat(n))}
+              isUpper={false}
+              size="sm"
+              isSelected={selected.has(n)}
+              onClick={(e) => toggleTooth(n, e)}
+            />
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {PERM_LOWER.map((n) => (
+            <Tooth
+              key={n}
+              num={n}
+              etat={getEtat(n)}
+              color={getColor(getEtat(n))}
+              isUpper={false}
+              size="lg"
+              isSelected={selected.has(n)}
+              onClick={(e) => toggleTooth(n, e)}
+            />
+          ))}
+        </div>
+        <div className="text-xs text-center text-slate-500 mt-1 uppercase tracking-wider font-semibold">
+          Mandibule (bas)
+        </div>
+        <div className="text-[11px] text-center text-slate-400 mt-1">
+          Clic : sélectionner une dent · Ctrl/Cmd + clic : sélection multiple
         </div>
       </div>
 
-      {/* Panel d'édition */}
-      {selectedTooth && (
-        <div className="mt-6 card !rounded-2xl p-4 animate-slide-up">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
-                Dent sélectionnée
-              </span>
-              <h3 className="font-display text-lg font-semibold">
-                Dent N° {selectedTooth}
-              </h3>
+      {/* Contrôles / Statuts / Détails de la dent */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="card !rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MousePointerClick size={16} className="text-accent-500" />
+            <h3 className="font-display text-sm font-semibold">Contrôles</h3>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {controlActions.map((c) => (
+              <button
+                key={c.label}
+                onClick={c.action}
+                className="px-2.5 py-1 rounded-full text-[11px] font-medium border border-slate-200 bg-white hover:border-accent-400 hover:text-accent-600 transition-colors"
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          {selected.size > 0 && (
+            <div className="mt-3 text-xs text-slate-500">
+              {selected.size} dent(s) sélectionnée(s)
             </div>
-            <button
-              onClick={() => setSelectedTooth(null)}
-              className="btn-ghost !rounded-full !px-3 !py-1.5 text-xs"
+          )}
+        </div>
+
+        <div className="card !rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardList size={16} className="text-accent-500" />
+            <h3 className="font-display text-sm font-semibold">Statuts</h3>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {presets.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => runPreset(p.key, p.action)}
+                disabled={bulkMutation.isPending}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors disabled:opacity-50 ${
+                  confirmingPreset === p.key
+                    ? 'border-rose-400 bg-rose-50 text-rose-600'
+                    : 'border-slate-200 bg-white hover:border-accent-400 hover:text-accent-600'
+                }`}
+              >
+                {confirmingPreset === p.key ? 'Confirmer ?' : p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+            <label className="text-xs text-slate-500 font-medium whitespace-nowrap">
+              Ajouter :
+            </label>
+            <select
+              className="input !py-1 !text-xs flex-1"
+              value={pendingEtat}
+              onChange={(e) => setPendingEtat(e.target.value as ToothEtat)}
             >
-              Désélectionner
+              {ETATS.map((e) => (
+                <option key={e.value} value={e.value}>
+                  {e.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => applyEtatToSelection(pendingEtat)}
+              disabled={selected.size === 0 || bulkMutation.isPending}
+              className="btn-primary !rounded-full !px-3 !py-1 text-xs disabled:opacity-50"
+            >
+              Appliquer
             </button>
           </div>
+        </div>
 
-          <div className="flex flex-wrap gap-2">
-            {ETATS.map((e) => {
-              const isActive = selectedEtat === e.value;
-              return (
-                <button
-                  key={e.value}
-                  onClick={() => handleSetEtat(e.value)}
-                  disabled={updateMutation.isPending}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all disabled:opacity-50"
-                  style={
-                    isActive
-                      ? { background: e.color, color: '#fff' }
-                      : { background: `${e.color}14`, color: e.color }
-                  }
+        <div className="card !rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Info size={16} className="text-accent-500" />
+            <h3 className="font-display text-sm font-semibold">Détails de la dent</h3>
+          </div>
+
+          {selected.size === 0 && (
+            <div className="text-xs text-slate-400 italic">
+              Sélectionnez une ou plusieurs dents dans le schéma pour voir les détails.
+            </div>
+          )}
+
+          {selected.size > 1 && (
+            <div className="text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">
+                {selected.size} dents sélectionnées.
+              </span>{' '}
+              Utilisez le panneau « Statuts » ci-contre pour leur appliquer un état en une fois.
+            </div>
+          )}
+
+          {soleSelected != null && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                    {isPrimary(soleSelected) ? 'Dent de lait' : 'Dent permanente'}
+                  </div>
+                  <h4 className="font-display text-base font-semibold">
+                    Dent N° {soleSelected}
+                  </h4>
+                </div>
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+                  style={{
+                    background: `${getColor(getEtat(soleSelected))}1a`,
+                    color: getColor(getEtat(soleSelected)),
+                  }}
                 >
                   <div
                     className="w-2 h-2 rounded-full"
-                    style={{ background: isActive ? '#ffffff' : e.color }}
+                    style={{ background: getColor(getEtat(soleSelected)) }}
                   />
-                  {e.label}
+                  {ETATS.find((e) => e.value === getEtat(soleSelected))?.label}
+                </span>
+              </div>
+
+              {getState(soleSelected)?.dateModif && (
+                <div className="text-[11px] text-slate-400">
+                  Dernière modification :{' '}
+                  {format(new Date(getState(soleSelected)!.dateModif), "d MMM yyyy 'à' HH:mm", {
+                    locale: fr,
+                  })}
+                </div>
+              )}
+
+              <div>
+                <label className="label">Notes</label>
+                <textarea
+                  className="input"
+                  rows={2}
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  placeholder="Observation sur cette dent..."
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() =>
+                    singleMutation.mutate({
+                      dentNumero: soleSelected,
+                      etat: getEtat(soleSelected),
+                      notes: notesDraft,
+                    })
+                  }
+                  disabled={singleMutation.isPending}
+                  className="btn-primary !rounded-full !px-4 !py-1.5 text-xs disabled:opacity-50"
+                >
+                  Enregistrer la note
                 </button>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 function Tooth({
-  num, etat, color, isUpper, isSelected, onClick,
+  num,
+  etat,
+  color,
+  isUpper,
+  isSelected,
+  size,
+  onClick,
 }: {
-  num: number; etat: ToothEtat; color: string;
-  isUpper: boolean; isSelected: boolean; onClick: () => void;
+  num: number;
+  etat: ToothEtat;
+  color: string;
+  isUpper: boolean;
+  isSelected: boolean;
+  size: 'lg' | 'sm';
+  onClick: (e: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
+  const w = size === 'lg' ? 28 : 20;
+  const h = size === 'lg' ? 40 : 29;
+  const badgeSize = size === 'lg' ? 'w-4 h-4 text-[10px]' : 'w-3.5 h-3.5 text-[8px]';
+
   return (
     <button
       onClick={onClick}
@@ -184,14 +506,14 @@ function Tooth({
     >
       {isUpper && (
         <div
-          className={`text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-semibold ${
+          className={`${badgeSize} rounded-full flex items-center justify-center font-semibold ${
             isSelected ? 'bg-accent-500 text-white' : 'text-slate-400'
           }`}
         >
           {num}
         </div>
       )}
-      <svg width="28" height="40" viewBox="0 0 28 40">
+      <svg width={w} height={h} viewBox="0 0 28 40">
         <path
           d="M14 2 C20 2 24 6 24 14 C24 22 22 28 20 34 C19 37 17 38 14 38 C11 38 9 37 8 34 C6 28 4 22 4 14 C4 6 8 2 14 2 Z"
           fill={color}
@@ -202,7 +524,7 @@ function Tooth({
       </svg>
       {!isUpper && (
         <div
-          className={`text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-semibold ${
+          className={`${badgeSize} rounded-full flex items-center justify-center font-semibold ${
             isSelected ? 'bg-accent-500 text-white' : 'text-slate-400'
           }`}
         >
