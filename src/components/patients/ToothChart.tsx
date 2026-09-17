@@ -58,23 +58,29 @@ export function ToothChart({ patientId }: Props) {
 
   if (isLoading) return <div className="py-12"><Spinner /></div>;
 
+  const selectedEtat = selectedTooth ? getEtat(selectedTooth) : null;
+
   return (
     <div>
       {/* Légende */}
-      <div className="flex flex-wrap gap-3 text-xs mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {ETATS.map((e) => (
-          <div key={e.value} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded" style={{ background: e.color }} />
+          <div
+            key={e.value}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+            style={{ background: `${e.color}1a`, color: e.color }}
+          >
+            <div className="w-2 h-2 rounded-full" style={{ background: e.color }} />
             {e.label}
           </div>
         ))}
       </div>
 
       {/* Schéma */}
-      <div className="bg-slate-50 p-6 rounded-lg flex flex-col gap-6 items-center">
+      <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 items-center overflow-x-auto">
         {/* Maxillaire */}
         <div>
-          <div className="text-xs text-center text-slate-500 mb-2 uppercase tracking-wider">
+          <div className="text-xs text-center text-slate-500 mb-2 uppercase tracking-wider font-semibold">
             Maxillaire (haut)
           </div>
           <div className="flex gap-1">
@@ -107,7 +113,7 @@ export function ToothChart({ patientId }: Props) {
               />
             ))}
           </div>
-          <div className="text-xs text-center text-slate-500 mt-2 uppercase tracking-wider">
+          <div className="text-xs text-center text-slate-500 mt-2 uppercase tracking-wider font-semibold">
             Mandibule (bas)
           </div>
         </div>
@@ -115,10 +121,10 @@ export function ToothChart({ patientId }: Props) {
 
       {/* Panel d'édition */}
       {selectedTooth && (
-        <div className="mt-6 card p-4 animate-slide-up">
+        <div className="mt-6 card !rounded-2xl p-4 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider">
+              <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
                 Dent sélectionnée
               </span>
               <h3 className="font-display text-lg font-semibold">
@@ -127,24 +133,35 @@ export function ToothChart({ patientId }: Props) {
             </div>
             <button
               onClick={() => setSelectedTooth(null)}
-              className="text-slate-400 hover:text-slate-700 text-sm"
+              className="btn-ghost !rounded-full !px-3 !py-1.5 text-xs"
             >
               Désélectionner
             </button>
           </div>
 
-          <div className="grid grid-cols-5 gap-2">
-            {ETATS.map((e) => (
-              <button
-                key={e.value}
-                onClick={() => handleSetEtat(e.value)}
-                disabled={updateMutation.isPending}
-                className="flex items-center gap-2 px-3 py-2 rounded-md border border-slate-200 hover:border-primary-500 hover:bg-primary-50 transition-all text-sm"
-              >
-                <div className="w-3 h-3 rounded" style={{ background: e.color }} />
-                {e.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            {ETATS.map((e) => {
+              const isActive = selectedEtat === e.value;
+              return (
+                <button
+                  key={e.value}
+                  onClick={() => handleSetEtat(e.value)}
+                  disabled={updateMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all disabled:opacity-50"
+                  style={
+                    isActive
+                      ? { background: e.color, color: '#fff' }
+                      : { background: `${e.color}14`, color: e.color }
+                  }
+                >
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: isActive ? '#ffffff' : e.color }}
+                  />
+                  {e.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -166,19 +183,31 @@ function Tooth({
       }`}
     >
       {isUpper && (
-        <div className="text-[10px] text-slate-400">{num}</div>
+        <div
+          className={`text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-semibold ${
+            isSelected ? 'bg-accent-500 text-white' : 'text-slate-400'
+          }`}
+        >
+          {num}
+        </div>
       )}
       <svg width="28" height="40" viewBox="0 0 28 40">
         <path
           d="M14 2 C20 2 24 6 24 14 C24 22 22 28 20 34 C19 37 17 38 14 38 C11 38 9 37 8 34 C6 28 4 22 4 14 C4 6 8 2 14 2 Z"
           fill={color}
-          stroke={isSelected ? '#0e6ba8' : '#0b1f33'}
+          stroke={isSelected ? '#14b8a6' : '#0b1f33'}
           strokeWidth={isSelected ? 2.5 : 1}
           opacity="0.85"
         />
       </svg>
       {!isUpper && (
-        <div className="text-[10px] text-slate-400">{num}</div>
+        <div
+          className={`text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-semibold ${
+            isSelected ? 'bg-accent-500 text-white' : 'text-slate-400'
+          }`}
+        >
+          {num}
+        </div>
       )}
     </button>
   );
