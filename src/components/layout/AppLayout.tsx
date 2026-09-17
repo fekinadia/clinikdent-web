@@ -44,7 +44,7 @@ const SOINS_MENU_VISIBLE = false;
 
 // Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
 // est retiré du menu et de la fiche patient. Fonctionnalité et données intactes.
-const ORDONNANCES_MENU_VISIBLE = false;
+const ORDONNANCES_MENU_VISIBLE = true;
 
 // Masqué temporairement (Nadia, 2026-08-29) : la page Paramètres n'est encore qu'un
 // placeholder "Bientôt disponible" (configuration du cabinet, catalogue d'actes, types
