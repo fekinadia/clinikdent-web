@@ -34,6 +34,8 @@ const HOURS = Array.from({ length: 22 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${m}`;
 });
 
+const ROW_HEIGHT = 36;
+
 type ViewMode = 'jour' | 'semaine' | 'mois';
 
 const VIEW_LABELS: Record<ViewMode, string> = {
@@ -146,15 +148,41 @@ export function AgendaPage() {
           <h1 className="font-display text-xl font-semibold">Agenda</h1>
           <p className="text-xs text-slate-500 mt-0.5 capitalize">{headerLabel}</p>
         </div>
+
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
+          <button className="btn-primary !rounded-full" onClick={() => setIsDialogOpen(true)}>
+            <Plus size={16} /> Nouveau RDV
+          </button>
+
+          <div className="flex items-center gap-1 sm:ml-2">
+            <button
+              onClick={goToPrevious}
+              className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={goToToday}
+              className="px-3.5 py-1.5 rounded-full border border-slate-200 text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+            >
+              Aujourd'hui
+            </button>
+            <button
+              onClick={goToNext}
+              className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 sm:ml-2">
             {(Object.keys(VIEW_LABELS) as ViewMode[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setViewMode(v)}
                 className={`px-3 py-1.5 text-xs sm:text-sm rounded-md font-medium transition-colors ${
                   viewMode === v
-                    ? 'bg-white shadow-sm text-primary-600'
+                    ? 'bg-white shadow-sm text-accent-600'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -162,18 +190,6 @@ export function AgendaPage() {
               </button>
             ))}
           </div>
-          <button onClick={goToPrevious} className="btn-ghost !p-2">
-            <ChevronLeft size={18} />
-          </button>
-          <button onClick={goToToday} className="btn-ghost">
-            Aujourd'hui
-          </button>
-          <button onClick={goToNext} className="btn-ghost !p-2">
-            <ChevronRight size={18} />
-          </button>
-          <button className="btn-primary sm:ml-2" onClick={() => setIsDialogOpen(true)}>
-            <Plus size={16} /> Nouveau RDV
-          </button>
         </div>
       </header>
 
@@ -227,6 +243,18 @@ const STATUT_INFO: Record<string, { label: string; dot: string }> = {
   no_show: { label: 'No-show', dot: '#b91c1c' },
 };
 
+/** Position (en minutes depuis 08:00) de l'instant présent, ou null si hors grille. */
+function useNowOffset() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const minutesSince8 = (now.getHours() - 8) * 60 + now.getMinutes();
+  if (minutesSince8 < 0 || minutesSince8 > 11 * 60) return null;
+  return { now, top: (minutesSince8 / 30) * ROW_HEIGHT };
+}
+
 /** Grille horaire (08:00-18:30) utilisée pour les vues Jour et Semaine. */
 function HourGrid({
   days,
@@ -240,6 +268,7 @@ function HourGrid({
   onEdit: (appt: Appointment) => void;
 }) {
   const gridTemplateColumns = `52px repeat(${days.length}, minmax(96px, 1fr))`;
+  const nowOffset = useNowOffset();
 
   return (
     <div style={{ minWidth: days.length > 1 ? '640px' : '320px' }}>
@@ -251,16 +280,20 @@ function HourGrid({
           return (
             <div
               key={day.toISOString()}
-              className={`p-3 text-center border-l border-slate-200 ${isToday ? 'bg-primary-50' : ''}`}
+              className={`p-3 text-center border-l border-slate-200 ${isToday ? 'bg-accent-500/[0.06]' : ''}`}
             >
               <div
                 className={`text-xs uppercase tracking-wider font-semibold ${
-                  isToday ? 'text-primary-600' : 'text-slate-500'
+                  isToday ? 'text-accent-600' : 'text-slate-500'
                 }`}
               >
                 {format(day, 'EEE', { locale: fr })}
               </div>
-              <div className={`text-lg font-display font-semibold mt-0.5 ${isToday ? 'text-primary-600' : ''}`}>
+              <div
+                className={`mt-1 mx-auto w-7 h-7 rounded-full flex items-center justify-center text-sm font-display font-semibold ${
+                  isToday ? 'bg-accent-500 text-white' : 'bg-accent-500/10 text-slate-700'
+                }`}
+              >
                 {format(day, 'd')}
               </div>
             </div>
@@ -277,25 +310,48 @@ function HourGrid({
         <div className="grid relative" style={{ gridTemplateColumns }}>
           {HOURS.map((hour, hourIdx) => (
             <div key={hour} className="contents">
-              <div className="text-xs text-slate-400 text-right pr-2 py-1.5 border-r border-slate-200 h-8">
+              <div
+                className="text-xs text-slate-400 text-right pr-2 py-1.5 border-r border-slate-200"
+                style={{ height: `${ROW_HEIGHT}px` }}
+              >
                 {hourIdx % 2 === 0 ? hour : ''}
               </div>
               {days.map((day, dayIdx) => {
                 const [h, m] = hour.split(':').map(Number);
+                const isToday = isSameDay(day, new Date());
 
                 const appt = appointments?.find((a) => {
                   const aDate = parseISO(a.dateDebut);
                   return isSameDay(aDate, day) && aDate.getHours() === h && aDate.getMinutes() === m;
                 });
 
+                const showNowLine =
+                  isToday &&
+                  nowOffset &&
+                  nowOffset.top >= hourIdx * ROW_HEIGHT &&
+                  nowOffset.top < (hourIdx + 1) * ROW_HEIGHT;
+
                 return (
                   <div
                     key={dayIdx}
-                    className={`h-8 border-b border-l border-slate-100 relative ${
+                    className={`border-b border-l border-slate-100 relative ${
                       hourIdx % 2 === 1 ? 'border-b-slate-200' : ''
-                    }`}
+                    } ${isToday ? 'bg-accent-500/[0.04]' : ''}`}
+                    style={{ height: `${ROW_HEIGHT}px` }}
                   >
                     {appt && <AppointmentBlock appt={appt} onEdit={onEdit} />}
+                    {showNowLine && nowOffset && (
+                      <div
+                        className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                        style={{ top: `${nowOffset.top - hourIdx * ROW_HEIGHT}px` }}
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 -ml-0.5" />
+                        <div className="flex-1 h-px bg-rose-500" />
+                        <span className="text-[9px] font-semibold text-rose-500 bg-white px-1 -mr-1">
+                          {format(nowOffset.now, 'HH:mm')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -356,12 +412,12 @@ function MonthGrid({
                 key={day.toISOString()}
                 onClick={() => onSelectDay(day)}
                 className={`min-h-[100px] p-1.5 border-b border-l border-slate-100 first:border-l-0 text-left align-top hover:bg-slate-50 transition-colors ${
-                  !inMonth ? 'bg-slate-50/60' : ''
+                  isToday ? 'bg-accent-500/[0.05]' : !inMonth ? 'bg-slate-50/60' : ''
                 }`}
               >
                 <div
                   className={`text-xs font-medium w-6 h-6 rounded-full flex items-center justify-center mb-1 ${
-                    isToday ? 'bg-primary-500 text-white' : inMonth ? 'text-slate-700' : 'text-slate-300'
+                    isToday ? 'bg-accent-500 text-white' : inMonth ? 'text-slate-700' : 'text-slate-300'
                   }`}
                 >
                   {format(day, 'd')}
@@ -395,8 +451,9 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
   const start = parseISO(appt.dateDebut);
   const end = parseISO(appt.dateFin);
   const durationMin = (end.getTime() - start.getTime()) / 60000;
-  const height = (durationMin / 30) * 32;
+  const height = (durationMin / 30) * ROW_HEIGHT;
   const color = STATUT_INFO[appt.statut]?.dot || '#94a3b8';
+  const showTime = height >= 44;
 
   const deleteMutation = useMutation({
     mutationFn: () => appointmentsApi.delete(appt.id),
@@ -427,20 +484,23 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
   return (
     <Link
       to={`/patients/${appt.patientId}`}
-      className="group absolute left-0.5 right-0.5 top-0 rounded px-2 py-1 text-[11px] font-medium overflow-hidden cursor-pointer hover:z-10 hover:shadow-md transition-shadow"
+      className="group absolute left-0.5 right-0.5 top-0 rounded-md px-2 py-1 text-[11px] font-medium overflow-hidden cursor-pointer bg-white border border-slate-200 hover:z-10 hover:shadow-md transition-shadow"
       style={{
         height: `${height - 2}px`,
-        background: `${color}22`,
         borderLeft: `3px solid ${color}`,
-        color,
       }}
     >
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
-          <div className="font-semibold truncate flex items-center gap-1">
+          {showTime && (
+            <div className="text-[9px] text-slate-400 font-normal leading-tight">
+              {format(start, 'HH:mm')} - {format(end, 'HH:mm')}
+            </div>
+          )}
+          <div className="font-semibold truncate flex items-center gap-1 text-slate-800">
             <span
               className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: (STATUT_INFO[appt.statut]?.dot) || '#94a3b8' }}
+              style={{ background: color }}
               title={STATUT_INFO[appt.statut]?.label || appt.statut}
             />
             <span className="truncate">
@@ -448,7 +508,7 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
               {appt.patient?.gsm && <span className="opacity-75"> · {appt.patient.gsm}</span>}
             </span>
           </div>
-          <div className="opacity-75 truncate">{appt.type?.libelle}</div>
+          <div className="text-slate-400 truncate">{appt.type?.libelle}</div>
         </div>
         <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0 bg-white/95 rounded shadow-sm px-0.5 py-0.5">
           <button
@@ -462,7 +522,7 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
             title="Supprimer le rendez-vous"
-            className="p-0.5 rounded hover:bg-slate-100 text-slate-500 hover:text-rose-600 transition disabled:opacity-40"
+            className="p-0.5 rounded hover:bg-slate-100 text-slate-500 hover:text-rose-600 transition"
           >
             <Trash2 size={11} />
           </button>
