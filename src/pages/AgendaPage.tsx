@@ -372,8 +372,8 @@ function MonthGrid({
                       key={a.id}
                       className="text-[10px] leading-tight truncate rounded px-1 py-0.5"
                       style={{
-                        background: `${a.type?.couleur || '#3b82f6'}22`,
-                        color: a.type?.couleur || '#3b82f6',
+                        background: `${STATUT_INFO[a.statut]?.dot || '#94a3b8'}22`,
+                        color: STATUT_INFO[a.statut]?.dot || '#94a3b8',
                       }}
                     >
                       {format(parseISO(a.dateDebut), 'HH:mm')} {a.patient?.prenom} {a.patient?.nom}
@@ -396,7 +396,7 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
   const end = parseISO(appt.dateFin);
   const durationMin = (end.getTime() - start.getTime()) / 60000;
   const height = (durationMin / 30) * 32;
-  const color = appt.type?.couleur || '#3b82f6';
+  const color = STATUT_INFO[appt.statut]?.dot || '#94a3b8';
 
   const deleteMutation = useMutation({
     mutationFn: () => appointmentsApi.delete(appt.id),
