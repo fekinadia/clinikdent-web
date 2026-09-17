@@ -50,8 +50,7 @@ export function PatientImagesTab({ patientId }: PatientImagesTabProps) {
         </div>
         <button
           onClick={() => setIsDialogOpen(true)}
-          className="px-5 py-2.5 text-white rounded-lg font-medium transition flex items-center gap-2 shadow-sm hover:shadow"
-          style={{ backgroundColor: '#0e6ba8' }}
+          className="btn-primary !rounded-full !px-5 !py-2.5 shadow-sm hover:shadow"
         >
           <Plus className="w-4 h-4" />
           Ajouter une photo/radio
@@ -256,8 +255,7 @@ function UploadImageDialog({
           <button
             onClick={() => uploadMutation.mutate()}
             disabled={files.length === 0 || uploadMutation.isPending}
-            className="px-5 py-2.5 text-white rounded-lg font-medium transition disabled:opacity-50"
-            style={{ backgroundColor: '#0e6ba8' }}
+            className="btn-primary !rounded-full !px-5 !py-2.5"
           >
             {uploadMutation.isPending
               ? 'Envoi...'
