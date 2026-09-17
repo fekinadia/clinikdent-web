@@ -15,7 +15,7 @@ import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/ut
 
 // Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
 // est retiré de la fiche patient (et du menu). Fonctionnalité et données intactes.
-const ORDONNANCES_TAB_VISIBLE = false;
+const ORDONNANCES_TAB_VISIBLE = true;
 
 // Masqué temporairement (Nadia, 2026-08-30) : à la demande de Nadia, en attendant de
 // régler la question du statut professionnel (patente / auto-entrepreneur) nécessaire
