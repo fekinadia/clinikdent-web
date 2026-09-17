@@ -57,17 +57,36 @@ const PARAMETRES_MENU_VISIBLE = false;
 // juste retirée du menu.
 const RECALLS_MENU_VISIBLE = false;
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-  { to: '/patients', icon: Users, label: 'Patients' },
-  { to: '/agenda', icon: Calendar, label: 'Agenda' },
-  { to: '/recalls', icon: BellRing, label: 'Patients à réactiver' },
-  { to: '/treatments', icon: Activity, label: 'Soins' },
-  { to: '/prescriptions', icon: FileText, label: 'Ordonnances' },
-  { to: '/finance', icon: Wallet, label: 'Facturation' },
-  { to: '/expenses', icon: Receipt, label: 'Dépenses' },
-  { to: '/stats', icon: BarChart3, label: 'Statistiques' },
-  { to: '/parametres/abonnement', icon: CreditCard, label: 'Abonnement' },
+type NavItem = { to: string; icon: LucideIcon; label: string; end?: boolean };
+
+// Navigation regroupée par section (style "ambiance Dentalis" : sidebar sombre,
+// items groupés, icônes dans des pastilles).
+const navSections: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Vue d'ensemble",
+    items: [
+      { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
+      { to: '/patients', icon: Users, label: 'Patients' },
+      { to: '/agenda', icon: Calendar, label: 'Agenda' },
+      { to: '/recalls', icon: BellRing, label: 'Patients à réactiver' },
+    ],
+  },
+  {
+    label: 'Soins & suivi',
+    items: [
+      { to: '/treatments', icon: Activity, label: 'Soins' },
+      { to: '/prescriptions', icon: FileText, label: 'Ordonnances' },
+      { to: '/finance', icon: Wallet, label: 'Facturation' },
+      { to: '/expenses', icon: Receipt, label: 'Dépenses' },
+      { to: '/stats', icon: BarChart3, label: 'Statistiques' },
+    ],
+  },
+  {
+    label: 'Compte',
+    items: [
+      { to: '/parametres/abonnement', icon: CreditCard, label: 'Abonnement' },
+    ],
+  },
 ];
 
 const automationNavItems = [
@@ -79,6 +98,38 @@ const automationNavItems = [
   { to: '/automatisation/historique', icon: History, label: 'Historique' },
 ];
 
+function navLinkClasses(isActive: boolean) {
+  return clsx(
+    'group relative flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-[13.5px] transition-all',
+    isActive
+      ? 'bg-white/[0.08] text-white font-semibold before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-[18px] before:rounded-r-full before:bg-accent-400'
+      : 'text-slate-400 font-medium hover:bg-white/[0.04] hover:text-white'
+  );
+}
+
+function IconBox({ Icon, active }: { Icon: LucideIcon; active: boolean }) {
+  return (
+    <span
+      className={clsx(
+        'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-all',
+        active
+          ? 'bg-gradient-to-br from-accent-400 to-primary-500 text-white shadow-[0_4px_10px_rgba(45,212,191,0.35)]'
+          : 'bg-white/5 text-slate-400 group-hover:text-white'
+      )}
+    >
+      <Icon size={15} />
+    </span>
+  );
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <div className="px-2.5 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#4b6079]">
+      {children}
+    </div>
+  );
+}
+
 function NavGroup({
   icon: Icon,
   label,
@@ -87,7 +138,7 @@ function NavGroup({
 }: {
   icon: LucideIcon;
   label: string;
-  items: { to: string; icon: LucideIcon; label: string; end?: boolean }[];
+  items: NavItem[];
   onNavigate: () => void;
 }) {
   const location = useLocation();
@@ -102,11 +153,11 @@ function NavGroup({
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className={clsx(
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all',
-          isGroupActive ? 'text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+          'w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-[13.5px] font-medium transition-all',
+          isGroupActive ? 'text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white'
         )}
       >
-        <Icon size={16} />
+        <IconBox Icon={Icon} active={isGroupActive} />
         <span className="flex-1 text-left">{label}</span>
         {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </button>
@@ -118,17 +169,14 @@ function NavGroup({
               to={item.to}
               end={item.end}
               onClick={onNavigate}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all',
-                  isActive
-                    ? 'bg-gradient-to-r from-primary-500 to-primary-500/0 text-white shadow-[inset_3px_0_0_#14b8a6]'
-                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                )
-              }
+              className={({ isActive }) => navLinkClasses(isActive)}
             >
-              <item.icon size={16} />
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  <IconBox Icon={item.icon} active={isActive} />
+                  {item.label}
+                </>
+              )}
             </NavLink>
           ))}
         </div>
@@ -147,6 +195,17 @@ export function AppLayout() {
     navigate('/login');
   };
 
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items
+        .filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement')
+        .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
+        .filter((item) => ORDONNANCES_MENU_VISIBLE || item.to !== '/prescriptions')
+        .filter((item) => RECALLS_MENU_VISIBLE || item.to !== '/recalls'),
+    }))
+    .filter((section) => section.items.length > 0);
+
   return (
     <div className="h-screen flex overflow-hidden bg-slate-100">
       {mobileMenuOpen && (
@@ -159,17 +218,18 @@ export function AppLayout() {
       {/* SIDEBAR */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 w-60 flex-shrink-0 flex flex-col bg-primary-900 text-slate-200 transition-transform duration-200 md:static md:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 flex-shrink-0 flex flex-col text-slate-200 transition-transform duration-200 md:static md:translate-x-0',
+          'bg-[linear-gradient(180deg,#0c1526_0%,#0a1220_60%,#080e1a_100%)]',
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="p-5 border-b border-white/10">
+        <div className="p-5 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-accent-500 to-primary-500">
+              <div className="w-[42px] h-[42px] rounded-[13px] flex items-center justify-center bg-gradient-to-br from-accent-400 to-primary-500 shadow-[0_6px_16px_rgba(20,184,166,0.35)]">
                 <svg
-                  width="20"
-                  height="20"
+                  width="21"
+                  height="21"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="white"
@@ -181,11 +241,11 @@ export function AppLayout() {
                 </svg>
               </div>
               <div>
-                <div className="font-display text-white font-semibold text-lg leading-none">
+                <div className="font-display text-white font-extrabold text-lg leading-none tracking-tight">
                   ClinikDent
                 </div>
-                <div className="text-[10px] text-white/50 mt-1 tracking-widest uppercase">
-                  v 1.0
+                <div className="text-[10.5px] text-accent-300 mt-1 font-semibold tracking-wider uppercase">
+                  Cabinet dentaire
                 </div>
               </div>
             </div>
@@ -198,106 +258,117 @@ export function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-0.5">
-          {navItems
-            .filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement')
-            .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
-            .filter((item) => ORDONNANCES_MENU_VISIBLE || item.to !== '/prescriptions')
-            .filter((item) => RECALLS_MENU_VISIBLE || item.to !== '/recalls')
-            .map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={() => setMobileMenuOpen(false)}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all',
-                  isActive
-                    ? 'bg-gradient-to-r from-primary-500 to-primary-500/0 text-white shadow-[inset_3px_0_0_#14b8a6]'
-                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                )
-              }
-            >
-              <item.icon size={16} />
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 px-3.5 pb-2 overflow-y-auto">
+          {visibleSections.map((section) => (
+            <div key={section.label}>
+              <SectionLabel>{section.label}</SectionLabel>
+              <div className="space-y-0.5">
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={({ isActive }) => navLinkClasses(isActive)}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <IconBox Icon={item.icon} active={isActive} />
+                        {item.label}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
           {AUTOMATISATION_MENU_VISIBLE && (
-            <NavGroup
-              icon={Zap}
-              label="Automatisation Patients"
-              items={automationNavItems}
-              onNavigate={() => setMobileMenuOpen(false)}
-            />
+            <>
+              <SectionLabel>Automatisation</SectionLabel>
+              <NavGroup
+                icon={Zap}
+                label="Automatisation Patients"
+                items={automationNavItems}
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
+            </>
           )}
         </nav>
 
-        <div className="p-3 border-t border-white/10">
+        <div className="px-3.5 pb-3 pt-2 border-t border-white/[0.06] space-y-0.5">
           <NavLink
             to="/guide"
             onClick={() => setMobileMenuOpen(false)}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all mb-2',
-                isActive
-                  ? 'bg-gradient-to-r from-primary-500 to-primary-500/0 text-white shadow-[inset_3px_0_0_#14b8a6]'
-                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
-              )
-            }
+            className={({ isActive }) => navLinkClasses(isActive)}
           >
-            <BookOpen size={16} />
-            Guide d'utilisation
+            {({ isActive }) => (
+              <>
+                <IconBox Icon={BookOpen} active={isActive} />
+                Guide d'utilisation
+              </>
+            )}
           </NavLink>
           {PARAMETRES_MENU_VISIBLE && (
             <NavLink
               to="/settings"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
+              className={({ isActive }) => navLinkClasses(isActive)}
             >
-              <Settings size={16} />
-              Paramètres
+              {({ isActive }) => (
+                <>
+                  <IconBox Icon={Settings} active={isActive} />
+                  Paramètres
+                </>
+              )}
             </NavLink>
           )}
           {user?.isPlatformAdmin && (
-          <>
-            <NavLink
-              to="/admin/demo-accounts"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
-            >
-              <UserPlus size={16} />
-              Comptes démo
-            </NavLink>
-            <NavLink
-              to="/admin/accounts"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all mb-2"
-            >
-              <Building2 size={16} />
-              Tous les comptes
-            </NavLink>
-          </>
-        )}
+            <>
+              <NavLink
+                to="/admin/demo-accounts"
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) => navLinkClasses(isActive)}
+              >
+                {({ isActive }) => (
+                  <>
+                    <IconBox Icon={UserPlus} active={isActive} />
+                    Comptes démo
+                  </>
+                )}
+              </NavLink>
+              <NavLink
+                to="/admin/accounts"
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) => navLinkClasses(isActive)}
+              >
+                {({ isActive }) => (
+                  <>
+                    <IconBox Icon={Building2} active={isActive} />
+                    Tous les comptes
+                  </>
+                )}
+              </NavLink>
+            </>
+          )}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all"
+            className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-[13.5px] font-medium text-slate-400 hover:bg-white/[0.04] hover:text-white transition-all"
           >
-            <LogOut size={16} />
+            <IconBox Icon={LogOut} active={false} />
             Déconnexion
           </button>
         </div>
 
-        <div className="p-4 border-t border-white/10 bg-black/20">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center text-white text-xs font-semibold">
+        <div className="p-3.5">
+          <div className="flex items-center gap-2.5 bg-white/5 border border-white/[0.07] rounded-2xl px-3 py-2.5">
+            <div className="w-[34px] h-[34px] rounded-[10px] bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0">
               {user?.email?.[0]?.toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-white text-sm font-medium truncate">
+              <div className="text-white text-[12px] font-semibold truncate">
                 {user?.email}
               </div>
-              <div className="text-white/50 text-[11px]">Médecin</div>
+              <div className="text-[#5b7186] text-[10.5px]">Médecin</div>
             </div>
           </div>
         </div>
@@ -305,7 +376,7 @@ export function AppLayout() {
 
       {/* MAIN */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="md:hidden flex items-center gap-3 bg-primary-900 text-white px-4 py-3 flex-shrink-0">
+        <div className="md:hidden flex items-center gap-3 bg-[#0a1220] text-white px-4 py-3 flex-shrink-0">
           <button onClick={() => setMobileMenuOpen(true)} className="text-white/80 hover:text-white">
             <Menu size={22} />
           </button>
