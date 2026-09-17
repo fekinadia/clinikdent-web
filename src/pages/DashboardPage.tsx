@@ -1,10 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Calendar, TrendingUp, AlertCircle, ArrowRight, Wallet } from 'lucide-react';
+import { Users, Calendar, TrendingUp, AlertCircle, ArrowRight, Wallet, ChevronRight } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { patientsApi, appointmentsApi } from '@/api/endpoints';
 import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatTime } from '@/lib/utils';
+
+const STATUT_STYLE: Record<string, { border: string; bg: string; text: string; label: string }> = {
+  planifie: { border: '#94a3b8', bg: '#94a3b81a', text: '#475569', label: 'Planifié' },
+  confirme: { border: '#0e6ba8', bg: '#0e6ba81a', text: '#0e6ba8', label: 'Confirmé' },
+  en_cours: { border: '#d97706', bg: '#d977061a', text: '#b45309', label: 'En cours' },
+  termine: { border: '#16a34a', bg: '#16a34a1a', text: '#15803d', label: 'Terminé' },
+  annule: { border: '#e11d48', bg: '#e11d481a', text: '#be123c', label: 'Annulé' },
+  absent: { border: '#64748b', bg: '#64748b1a', text: '#475569', label: 'Absent' },
+  no_show: { border: '#b91c1c', bg: '#b91c1c1a', text: '#991b1b', label: 'No-show' },
+};
 
 export function DashboardPage() {
   const { data: stats } = useQuery({
@@ -36,26 +47,26 @@ export function DashboardPage() {
           <StatCard
             label="Patients aujourd'hui"
             value={todayAppts?.length ?? '—'}
-            icon={<Users size={20} className="text-blue-600" />}
-            color="bg-blue-50"
+            icon={<Users size={20} />}
+            tint="#0e6ba8"
           />
           <StatCard
             label="Total patients"
             value={stats?.total ?? '—'}
-            icon={<Users size={20} className="text-emerald-600" />}
-            color="bg-emerald-50"
+            icon={<Users size={20} />}
+            tint="#16a34a"
           />
           <StatCard
             label="Nouveaux ce mois"
             value={stats?.ceMois ?? '—'}
-            icon={<TrendingUp size={20} className="text-amber-600" />}
-            color="bg-amber-50"
+            icon={<TrendingUp size={20} />}
+            tint="#d97706"
           />
           <StatCard
             label="Alertes"
             value="0"
-            icon={<AlertCircle size={20} className="text-rose-600" />}
-            color="bg-rose-50"
+            icon={<AlertCircle size={20} />}
+            tint="#e11d48"
           />
         </div>
 
@@ -80,62 +91,49 @@ export function DashboardPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {todayAppts?.map((appt) => (
-                  <Link
-                    key={appt.id}
-                    to={`/patients/${appt.patientId}`}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="text-sm font-mono font-semibold text-slate-700 w-12">
-                      {formatTime(appt.dateDebut)}
-                    </div>
-                    <div
-                      className="w-1 h-8 rounded"
-                      style={{ background: appt.type?.couleur || '#3b82f6' }}
-                    />
-                    {appt.patient && (
-                      <Avatar prenom={appt.patient.prenom} nom={appt.patient.nom} size="sm" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {appt.patient?.prenom} {appt.patient?.nom}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {appt.type?.libelle || 'Consultation'}
-                      </div>
-                    </div>
-                    <span
-                      className={`badge ${
-                        appt.statut === 'termine' ? 'badge-success'
-                        : appt.statut === 'en_cours' ? 'badge-warning'
-                        : appt.statut === 'annule' ? 'badge-danger'
-                        : 'badge-info'
-                      }`}
+                {todayAppts?.map((appt) => {
+                  const s = STATUT_STYLE[appt.statut] ?? STATUT_STYLE.planifie;
+                  return (
+                    <Link
+                      key={appt.id}
+                      to={`/patients/${appt.patientId}`}
+                      className="flex items-center gap-3 p-3 rounded-xl border-l-[3px] transition-colors hover:brightness-[0.98]"
+                      style={{ background: s.bg, borderLeftColor: s.border }}
                     >
-                      {statusLabel(appt.statut)}
-                    </span>
-                  </Link>
-                ))}
+                      <div className="text-sm font-mono font-semibold text-slate-700 w-12">
+                        {formatTime(appt.dateDebut)}
+                      </div>
+                      {appt.patient && (
+                        <Avatar prenom={appt.patient.prenom} nom={appt.patient.nom} size="sm" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">
+                          {appt.patient?.prenom} {appt.patient?.nom}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {appt.type?.libelle || 'Consultation'}
+                        </div>
+                      </div>
+                      <span
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
+                        style={{ background: s.border, color: '#fff' }}
+                      >
+                        {s.label}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Activité */}
+          {/* Raccourcis */}
           <div className="card p-5">
             <h3 className="font-semibold mb-4">Raccourcis</h3>
-            <div className="space-y-2">
-              <Link to="/patients" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors text-sm">
-                <Users size={16} className="text-primary-500" />
-                Liste des patients
-              </Link>
-              <Link to="/agenda" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors text-sm">
-                <Calendar size={16} className="text-primary-500" />
-                Planning de la semaine
-              </Link>
-              <Link to="/finance" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors text-sm">
-                <Wallet size={16} className="text-primary-500" />
-                Facturation
-              </Link>
+            <div className="space-y-1">
+              <ShortcutLink to="/patients" icon={Users} label="Liste des patients" tint="#0e6ba8" />
+              <ShortcutLink to="/agenda" icon={Calendar} label="Planning de la semaine" tint="#2dd4bf" />
+              <ShortcutLink to="/finance" icon={Wallet} label="Facturation" tint="#d97706" />
             </div>
           </div>
         </div>
@@ -144,8 +142,8 @@ export function DashboardPage() {
   );
 }
 
-function StatCard({ label, value, icon, color }: {
-  label: string; value: number | string; icon: React.ReactNode; color: string;
+function StatCard({ label, value, icon, tint }: {
+  label: string; value: number | string; icon: React.ReactNode; tint: string;
 }) {
   return (
     <div className="card p-5">
@@ -156,7 +154,10 @@ function StatCard({ label, value, icon, color }: {
           </div>
           <div className="font-display text-3xl font-semibold mt-2">{value}</div>
         </div>
-        <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${tint}1a`, color: tint }}
+        >
           {icon}
         </div>
       </div>
@@ -164,10 +165,22 @@ function StatCard({ label, value, icon, color }: {
   );
 }
 
-function statusLabel(s: string) {
-  const labels: Record<string, string> = {
-    planifie: 'Planifié', confirme: 'Confirmé', en_cours: 'En cours',
-    termine: 'Terminé', annule: 'Annulé', absent: 'Absent',
-  };
-  return labels[s] || s;
+function ShortcutLink({ to, icon: Icon, label, tint }: {
+  to: string; icon: LucideIcon; label: string; tint: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors text-sm"
+    >
+      <span
+        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: `${tint}1a`, color: tint }}
+      >
+        <Icon size={16} />
+      </span>
+      <span className="flex-1 font-medium text-slate-700">{label}</span>
+      <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-400" />
+    </Link>
+  );
 }
