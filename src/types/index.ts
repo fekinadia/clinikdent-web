@@ -72,7 +72,7 @@ export interface Appointment {
   typeId?: number;
   dateDebut: string;
   dateFin: string;
-  statut: 'planifie' | 'confirme' | 'en_cours' | 'termine' | 'annule' | 'absent' | 'no_show';
+  statut: 'planifie' | 'confirme' | 'en_cours' | 'termine' | 'annule' | 'absent';
   observation?: string;
   patient?: Pick<Patient, 'id' | 'nom' | 'prenom' | 'gsm'>;
   type?: AppointmentType;
@@ -146,4 +146,39 @@ export interface Prescription {
   dateEmission: string;
   texteLibre?: string;
   items: PrescriptionItem[];
+  patient?: Pick<Patient, 'id' | 'nom' | 'prenom' | 'numeroDossier' | 'dateNaissance'>;
+}
+
+// ====================================
+// Documents (chantier Dentalis — 2026-09-21)
+// Les ordonnances (Prescription ci-dessus) restent dans leur propre
+// table ; ce type couvre les 4 autres types générés depuis la fiche
+// patient, réunis avec les ordonnances dans la page Documents.
+// ====================================
+
+export type DocumentType = 'certificat_medical' | 'lettre_liaison' | 'devis' | 'note_honoraires';
+
+export interface PatientDocument {
+  id: number;
+  patientId: number;
+  type: DocumentType;
+  contenu: string;
+  montant?: number | null;
+  dateEmission: string;
+  createdAt: string;
+  patient?: Pick<Patient, 'id' | 'nom' | 'prenom' | 'numeroDossier' | 'dateNaissance'>;
+  medecin?: { nom: string; prenom: string; specialite?: string; numeroOrdre?: string };
+}
+
+export interface CabinetInfo {
+  nom: string;
+  adresse?: string | null;
+  telephone?: string | null;
+  email?: string | null;
+  logoUrl?: string | null;
+}
+
+export interface CabinetMe {
+  cabinet: CabinetInfo;
+  medecin?: { nom: string; prenom: string; specialite?: string; numeroOrdre?: string };
 }
