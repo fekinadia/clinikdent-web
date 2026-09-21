@@ -5,12 +5,7 @@ import { PrescriptionsTab } from '../components/PrescriptionsTab';
 import { TreatmentsTab } from '../components/TreatmentsTab';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import {
-  ArrowLeft, Edit, Trash2, Phone, Mail, MapPin, AlertCircle,
-  User, Stethoscope, Grid3x3, Wallet, Paperclip, Bell, FileText,
-  TrendingUp, Percent,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { patientsApi, treatmentsApi } from '@/api/endpoints';
 import { Avatar } from '@/components/ui/Avatar';
@@ -18,8 +13,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ToothChart } from '@/components/patients/ToothChart';
 import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/utils';
 
-// Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
-// est retiré de la fiche patient (et du menu). Fonctionnalité et données intactes.
+// Réactivé (Nadia, 2026-09-21) : voir AppLayout.tsx, ORDONNANCES_MENU_VISIBLE.
 const ORDONNANCES_TAB_VISIBLE = true;
 
 // Masqué temporairement (Nadia, 2026-08-30) : à la demande de Nadia, en attendant de
@@ -68,12 +62,9 @@ export function PatientDetailPage() {
 
   return (
     <>
-      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center gap-4">
-        <Link
-          to="/patients"
-          className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors flex-shrink-0"
-        >
-          <ArrowLeft size={16} />
+      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4">
+        <Link to="/patients" className="btn-ghost !p-2">
+          <ArrowLeft size={18} />
         </Link>
         <div className="flex-1">
           <h1 className="font-display text-lg font-semibold">
@@ -89,20 +80,19 @@ export function PatientDetailPage() {
               deleteMutation.mutate();
             }
           }}
-          className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors flex-shrink-0"
-          title="Supprimer le patient"
+          className="btn-ghost text-rose-600 hover:bg-rose-50"
         >
-          <Trash2 size={15} />
+          <Trash2 size={16} />
         </button>
       </header>
 
-      <div className="flex-1 overflow-auto p-4 sm:p-6 animate-fade-in">
+      <div className="flex-1 overflow-auto p-6 animate-fade-in">
         {/* Header fiche */}
-        <div className="card !rounded-2xl p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-start gap-5">
             <Avatar prenom={patient.prenom} nom={patient.nom} sexe={patient.sexe} size="xl" />
             <div className="flex-1">
-              <h2 className="font-display text-2xl font-semibold flex items-center gap-2">
+                           <h2 className="font-display text-2xl font-semibold flex items-center gap-2">
                 {patient.prenom} {patient.nom}
                 {patient.estProspect && (
                   <span className="badge badge-warning">Prospect</span>
@@ -143,33 +133,27 @@ export function PatientDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div className="card !rounded-2xl overflow-hidden">
-          <div className="border-b border-slate-200 px-4 py-3 overflow-x-auto">
-            <div className="inline-flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 w-max">
-              <TabBtn icon={User} active={tab === 'identite'} onClick={() => setTab('identite')}>
+        <div className="card overflow-hidden">
+          <div className="border-b border-slate-200 px-4 overflow-x-auto">
+            <div className="flex gap-1 w-max">
+              <TabBtn active={tab === 'identite'} onClick={() => setTab('identite')}>
                 Identité
               </TabBtn>
-              <TabBtn icon={Stethoscope} active={tab === 'soins'} onClick={() => setTab('soins')}>
+              <TabBtn active={tab === 'soins'} onClick={() => setTab('soins')}>
                 Soins
               </TabBtn>
-              <TabBtn icon={Grid3x3} active={tab === 'schema'} onClick={() => setTab('schema')}>
+              <TabBtn active={tab === 'schema'} onClick={() => setTab('schema')}>
                 Schéma dentaire
               </TabBtn>
-              <TabBtn icon={Wallet} active={tab === 'finance'} onClick={() => setTab('finance')}>
+              <TabBtn active={tab === 'finance'} onClick={() => setTab('finance')}>
                 Finances
               </TabBtn>
-              <TabBtn icon={Paperclip} active={tab === 'images'} onClick={() => setTab('images')}>
-                Pièces jointes
-              </TabBtn>
-              {RAPPELS_TAB_VISIBLE && (
-                <TabBtn icon={Bell} active={tab === 'rappels'} onClick={() => setTab('rappels')}>
-                  Rappels
-                </TabBtn>
+              <TabBtn active={tab === 'images'} onClick={() => setTab('images')}>Pièces jointes</TabBtn>
+{RAPPELS_TAB_VISIBLE && (
+                <TabBtn active={tab === 'rappels'} onClick={() => setTab('rappels')}>Rappels</TabBtn>
               )}
-              {ORDONNANCES_TAB_VISIBLE && (
-                <TabBtn icon={FileText} active={tab === 'ordonnances'} onClick={() => setTab('ordonnances')}>
-                  Ordonnances
-                </TabBtn>
+{ORDONNANCES_TAB_VISIBLE && (
+                <TabBtn active={tab === 'ordonnances'} onClick={() => setTab('ordonnances')}>Ordonnances</TabBtn>
               )}
             </div>
           </div>
@@ -180,8 +164,8 @@ export function PatientDetailPage() {
             {tab === 'schema' && <ToothChart patientId={patientId} />}
             {tab === 'finance' && <FinanceTab summary={finSummary} treatments={treatments} patientId={patientId} />}
             {tab === 'images' && <PatientImagesTab patientId={patientId} />}
-            {tab === 'rappels' && <RemindersTab patientId={patientId} />}
-            {tab === 'ordonnances' && <PrescriptionsTab patientId={patientId} patient={patient} />}
+{tab === 'rappels' && <RemindersTab patientId={patientId} />}
+{tab === 'ordonnances' && <PrescriptionsTab patientId={patientId} patient={patient} />}
           </div>
         </div>
       </div>
@@ -190,18 +174,17 @@ export function PatientDetailPage() {
 }
 
 function TabBtn({
-  active, onClick, icon: Icon, children,
-}: { active: boolean; onClick: () => void; icon: LucideIcon; children: React.ReactNode }) {
+  active, onClick, children,
+}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3.5 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors inline-flex items-center gap-1.5 ${
+      className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
         active
-          ? 'bg-white shadow-sm text-accent-600'
-          : 'text-slate-500 hover:text-slate-800'
+          ? 'text-primary-500 border-primary-500'
+          : 'text-slate-500 border-transparent hover:text-slate-900'
       }`}
     >
-      <Icon size={15} />
       {children}
     </button>
   );
@@ -257,7 +240,7 @@ function IdentiteTab({ patient }: { patient: any }) {
     return (
       <div>
         <div className="flex justify-end mb-4">
-          <button className="btn-ghost !rounded-full inline-flex items-center gap-1.5" onClick={startEditing}>
+          <button className="btn-ghost inline-flex items-center gap-1.5" onClick={startEditing}>
             <Edit size={14} /> Modifier
           </button>
         </div>
@@ -353,10 +336,10 @@ function IdentiteTab({ patient }: { patient: any }) {
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-4">
-        <button className="btn-ghost !rounded-full" onClick={() => setEditing(false)} disabled={mutation.isPending}>
+        <button className="btn-ghost" onClick={() => setEditing(false)} disabled={mutation.isPending}>
           Annuler
         </button>
-        <button className="btn-primary !rounded-full" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+        <button className="btn-primary" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
           {mutation.isPending ? <Spinner size={16} className="text-white" /> : 'Enregistrer'}
         </button>
       </div>
@@ -381,54 +364,35 @@ function FinanceTab({ summary, treatments, patientId }: { summary?: any; treatme
   return (
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <FinanceStat
-          icon={Wallet}
-          tint="#0e6ba8"
-          label="Total facturé"
-          value={summary.total}
-        />
-        <FinanceStat
-          icon={TrendingUp}
-          tint="#16a34a"
-          label="Reçu"
-          value={summary.recu}
-        />
-        <FinanceStat
-          icon={Percent}
-          tint="#64748b"
-          label="Remise"
-          value={summary.remise}
-        />
-        <FinanceStat
-          icon={AlertCircle}
-          tint={summary.reste > 0 ? '#e11d48' : '#64748b'}
-          label="Reste à payer"
-          value={summary.reste}
-        />
+        <div className="card p-4 border-slate-200">
+          <div className="label">Total facturé</div>
+          <div className="font-display text-2xl font-semibold mt-1">
+            {formatMoney(summary.total)} <span className="text-sm text-slate-400">DT</span>
+          </div>
+        </div>
+        <div className="card p-4 border-emerald-200 bg-emerald-50/50">
+          <div className="label text-emerald-700">Reçu</div>
+          <div className="font-display text-2xl font-semibold mt-1 text-emerald-700">
+            {formatMoney(summary.recu)} <span className="text-sm text-emerald-500">DT</span>
+          </div>
+        </div>
+        <div className="card p-4 border-slate-200">
+          <div className="label">Remise</div>
+          <div className="font-display text-2xl font-semibold mt-1 text-slate-500">
+            {formatMoney(summary.remise)} <span className="text-sm text-slate-400">DT</span>
+          </div>
+        </div>
+        <div className={`card p-4 ${summary.reste > 0 ? 'border-rose-200 bg-rose-50/50' : 'border-slate-200'}`}>
+          <div className={`label ${summary.reste > 0 ? 'text-rose-700' : ''}`}>
+            Reste à payer
+          </div>
+          <div className={`font-display text-2xl font-semibold mt-1 ${summary.reste > 0 ? 'text-rose-700' : ''}`}>
+            {formatMoney(summary.reste)} <span className="text-sm">DT</span>
+          </div>
+        </div>
       </div>
 
       <TreatmentsTab patientId={patientId} />
-    </div>
-  );
-}
-
-function FinanceStat({
-  icon: Icon, tint, label, value,
-}: { icon: LucideIcon; tint: string; label: string; value: number }) {
-  return (
-    <div className="card !rounded-2xl p-4">
-      <div className="flex items-center gap-2.5 mb-2">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: `${tint}1a`, color: tint }}
-        >
-          <Icon size={16} />
-        </div>
-        <div className="label !mb-0" style={{ color: tint }}>{label}</div>
-      </div>
-      <div className="font-display text-2xl font-semibold" style={{ color: tint }}>
-        {formatMoney(value)} <span className="text-sm font-normal opacity-60">DT</span>
-      </div>
     </div>
   );
 }
