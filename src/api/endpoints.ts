@@ -12,9 +12,12 @@ import type {
   Medication,
   Prescription,
   PrescriptionItem,
+  PatientDocument,
+  DocumentType,
+  CabinetMe,
 } from '@/types';
 
-export type { Prescription, PrescriptionItem };
+export type { Prescription, PrescriptionItem, PatientDocument, DocumentType, CabinetMe };
 
 // ===== AUTH =====
 export const authApi = {
@@ -28,12 +31,6 @@ export const authApi = {
     prenom: string;
     nomCabinet: string;
   }) => api.post<AuthResponse>('/auth/register', data).then((r) => r.data),
-
-  // Volet "changer mon mot de passe" (2026-09-21).
-  changePassword: (currentPassword: string, newPassword: string) =>
-    api
-      .patch<{ success: boolean }>('/auth/change-password', { currentPassword, newPassword })
-      .then((r) => r.data),
 };
 
 // ===== PATIENTS =====
@@ -123,6 +120,16 @@ export const treatmentsApi = {
 export const prescriptionsApi = {
   byPatient: (patientId: number) =>
     api.get<Prescription[]>(`/patients/${patientId}/prescriptions`).then((r) => r.data),
+
+  // Liste globale du cabinet, pour la page Documents (fusionnée avec
+  // documentsApi.list — voir DocumentsPage.tsx).
+  listAll: (params?: { search?: string; page?: number; limit?: number }) =>
+    api
+      .get<{ items: Prescription[]; total: number; page: number; pageCount: number }>(
+        '/prescriptions',
+        { params },
+      )
+      .then((r) => r.data),
 
   create: (data: {
     patientId: number;
@@ -449,56 +456,6 @@ export const financeApi = {
     api.get<FinancePayment[]>('/finance/payments', { params }).then((r) => r.data),
 };
 
-// ===== EXPENSES (dépenses du cabinet) =====
-export interface Expense {
-  id: number;
-  cabinetId: number;
-  categorie: string | null;
-  libelle: string;
-  montant: number;
-  dateDepense: string;
-  fournisseur: string | null;
-  justificatif: string | null;
-  createdById: number | null;
-  createdAt: string;
-}
-
-export interface ExpensesOverview {
-  total: number;
-  parCategorie: { categorie: string; total: number }[];
-}
-
-export const expensesApi = {
-  list: (params?: { from?: string; to?: string; categorie?: string }) =>
-    api.get<Expense[]>('/expenses', { params }).then((r) => r.data),
-
-  getOverview: (months?: number) =>
-    api.get<ExpensesOverview>('/expenses/overview', { params: { months } }).then((r) => r.data),
-
-  create: (data: {
-    libelle: string;
-    montant: number;
-    dateDepense: string;
-    categorie?: string;
-    fournisseur?: string;
-    justificatif?: string;
-  }) => api.post<Expense>('/expenses', data).then((r) => r.data),
-
-  update: (
-    id: number,
-    data: Partial<{
-      libelle: string;
-      montant: number;
-      dateDepense: string;
-      categorie: string;
-      fournisseur: string;
-      justificatif: string;
-    }>,
-  ) => api.patch<Expense>(`/expenses/${id}`, data).then((r) => r.data),
-
-  delete: (id: number) => api.delete(`/expenses/${id}`).then((r) => r.data),
-};
-
 // ===== ADMIN (comptes démo et clients) =====
 export interface DemoAccount {
   cabinetId: number;
@@ -540,4 +497,35 @@ export const adminApi = {
   listAllAccounts: () => api.get<AllAccount[]>('/admin/accounts').then((r) => r.data),
   deleteAccount: (cabinetId: number) =>
     api.delete<{ success: boolean; cabinetId: number; nomCabinet: string }>(`/admin/accounts/${cabinetId}`).then((r) => r.data),
+};
+
+// ===== DOCUMENTS (chantier Dentalis — page Documents, 2026-09-21) =====
+// Couvre les 4 types autres que l'ordonnance (voir prescriptionsApi
+// ci-dessus pour les ordonnances, restées dans leur propre table).
+export const documentsApi = {
+  list: (params?: { type?: DocumentType; search?: string; page?: number; limit?: number }) =>
+    api
+      .get<{ items: PatientDocument[]; total: number; page: number; pageCount: number }>(
+        '/documents',
+        { params },
+      )
+      .then((r) => r.data),
+
+  byPatient: (patientId: number) =>
+    api.get<PatientDocument[]>(`/patients/${patientId}/documents`).then((r) => r.data),
+
+  get: (id: number) => api.get<PatientDocument>(`/documents/${id}`).then((r) => r.data),
+
+  create: (data: {
+    patientId: number;
+    type: DocumentType;
+    contenu: string;
+    montant?: number;
+    dateEmission?: string;
+  }) => api.post<PatientDocument>('/documents', data).then((r) => r.data),
+};
+
+// ===== CABINET (entête des documents imprimés) =====
+export const cabinetApi = {
+  me: () => api.get<CabinetMe>('/cabinet/me').then((r) => r.data),
 };
