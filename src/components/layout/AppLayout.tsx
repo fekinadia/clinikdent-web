@@ -25,10 +25,12 @@ import {
   ChevronDown,
   ChevronRight,
   BookOpen,
+  KeyRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 // Masqué temporairement dans le menu en attendant la validation Meta Tech Provider (Nadia, 2026-08-29).
 // Repasser à true une fois la connexion WhatsApp par cabinet prête (Phase 3).
@@ -189,6 +191,7 @@ export function AppLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -360,7 +363,12 @@ export function AppLayout() {
         </div>
 
         <div className="p-3.5">
-          <div className="flex items-center gap-2.5 bg-white/5 border border-white/[0.07] rounded-2xl px-3 py-2.5">
+          <button
+            type="button"
+            onClick={() => setChangePasswordOpen(true)}
+            title="Changer le mot de passe"
+            className="w-full flex items-center gap-2.5 bg-white/5 border border-white/[0.07] rounded-2xl px-3 py-2.5 hover:bg-white/[0.08] transition-colors text-left"
+          >
             <div className="w-[34px] h-[34px] rounded-[10px] bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0">
               {user?.email?.[0]?.toUpperCase()}
             </div>
@@ -370,7 +378,8 @@ export function AppLayout() {
               </div>
               <div className="text-[#5b7186] text-[10.5px]">Médecin</div>
             </div>
-          </div>
+            <KeyRound size={14} className="text-[#5b7186] flex-shrink-0" />
+          </button>
         </div>
       </aside>
 
@@ -384,6 +393,8 @@ export function AppLayout() {
         </div>
         <Outlet />
       </main>
+
+      <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </div>
   );
 }
