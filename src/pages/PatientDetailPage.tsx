@@ -60,6 +60,8 @@ export function PatientDetailPage() {
       qc.invalidateQueries({ queryKey: ['patients'] });
       navigate('/patients');
     },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || 'Erreur lors de la suppression du patient'),
   });
 
   if (isLoading || !patient) return <div className="p-12"><Spinner /></div>;
