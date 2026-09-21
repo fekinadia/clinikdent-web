@@ -28,6 +28,12 @@ export const authApi = {
     prenom: string;
     nomCabinet: string;
   }) => api.post<AuthResponse>('/auth/register', data).then((r) => r.data),
+
+  // Volet "changer mon mot de passe" (2026-09-21).
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api
+      .patch<{ success: boolean }>('/auth/change-password', { currentPassword, newPassword })
+      .then((r) => r.data),
 };
 
 // ===== PATIENTS =====
