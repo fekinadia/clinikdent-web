@@ -31,6 +31,12 @@ export const authApi = {
     prenom: string;
     nomCabinet: string;
   }) => api.post<AuthResponse>('/auth/register', data).then((r) => r.data),
+
+  // Volet "changer mon mot de passe" (2026-09-21).
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api
+      .patch<{ success: boolean }>('/auth/change-password', { currentPassword, newPassword })
+      .then((r) => r.data),
 };
 
 // ===== PATIENTS =====
@@ -497,6 +503,56 @@ export const adminApi = {
   listAllAccounts: () => api.get<AllAccount[]>('/admin/accounts').then((r) => r.data),
   deleteAccount: (cabinetId: number) =>
     api.delete<{ success: boolean; cabinetId: number; nomCabinet: string }>(`/admin/accounts/${cabinetId}`).then((r) => r.data),
+};
+
+// ===== EXPENSES (dépenses du cabinet) =====
+export interface Expense {
+  id: number;
+  cabinetId: number;
+  categorie: string | null;
+  libelle: string;
+  montant: number;
+  dateDepense: string;
+  fournisseur: string | null;
+  justificatif: string | null;
+  createdById: number | null;
+  createdAt: string;
+}
+
+export interface ExpensesOverview {
+  total: number;
+  parCategorie: { categorie: string; total: number }[];
+}
+
+export const expensesApi = {
+  list: (params?: { from?: string; to?: string; categorie?: string }) =>
+    api.get<Expense[]>('/expenses', { params }).then((r) => r.data),
+
+  getOverview: (months?: number) =>
+    api.get<ExpensesOverview>('/expenses/overview', { params: { months } }).then((r) => r.data),
+
+  create: (data: {
+    libelle: string;
+    montant: number;
+    dateDepense: string;
+    categorie?: string;
+    fournisseur?: string;
+    justificatif?: string;
+  }) => api.post<Expense>('/expenses', data).then((r) => r.data),
+
+  update: (
+    id: number,
+    data: Partial<{
+      libelle: string;
+      montant: number;
+      dateDepense: string;
+      categorie: string;
+      fournisseur: string;
+      justificatif: string;
+    }>,
+  ) => api.patch<Expense>(`/expenses/${id}`, data).then((r) => r.data),
+
+  delete: (id: number) => api.delete(`/expenses/${id}`).then((r) => r.data),
 };
 
 // ===== DOCUMENTS (chantier Dentalis — page Documents, 2026-09-21) =====
