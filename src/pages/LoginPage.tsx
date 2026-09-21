@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { Eye, EyeOff } from 'lucide-react';
 import { authApi } from '@/api/endpoints';
 import { useAuthStore } from '@/lib/auth-store';
 import { Spinner } from '@/components/ui/Spinner';
@@ -11,6 +12,7 @@ export function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () => authApi.login(email, password),
@@ -87,13 +89,24 @@ export function LoginPage() {
             </div>
             <div>
               <label className="label">Mot de passe</label>
-              <input
-                type="password"
-                className="input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="input pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <button
