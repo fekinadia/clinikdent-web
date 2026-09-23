@@ -6,6 +6,7 @@ import type {
   PaginatedPatients,
   PatientRecall,
   Appointment,
+  CalendarEvent,
   Treatment,
   ToothState,
   FinancialSummary,
@@ -89,6 +90,20 @@ export const appointmentsApi = {
   // création automatique de la relance de récupération.
   markNoShow: (id: number) =>
     api.post<Appointment>(`/appointments/${id}/no-show`).then((r) => r.data),
+};
+
+// ===== CALENDAR EVENTS (agenda sans patient) =====
+export const calendarEventsApi = {
+  list: (params?: { dateDebut?: string; dateFin?: string }) =>
+    api.get<CalendarEvent[]>('/calendar-events', { params }).then((r) => r.data),
+
+  create: (data: { titre: string; dateDebut: string; dateFin: string; medecinId?: number }) =>
+    api.post<CalendarEvent>('/calendar-events', data).then((r) => r.data),
+
+  update: (id: number, data: Partial<CalendarEvent>) =>
+    api.patch<CalendarEvent>(`/calendar-events/${id}`, data).then((r) => r.data),
+
+  delete: (id: number) => api.delete(`/calendar-events/${id}`).then((r) => r.data),
 };
 
 // ===== TREATMENTS =====
