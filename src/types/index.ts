@@ -78,6 +78,16 @@ export interface Appointment {
   type?: AppointmentType;
 }
 
+// Bloc d'agenda libre (pause, réunion, blocage de créneau...) sans lien avec
+// un patient — voir NewAppointmentDialog (mode "Événement") et AgendaPage.
+export interface CalendarEvent {
+  id: number;
+  titre: string;
+  medecinId?: number;
+  dateDebut: string;
+  dateFin: string;
+}
+
 export interface TreatmentAct {
   id: number;
   libelle: string;
