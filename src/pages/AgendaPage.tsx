@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, CalendarClock } from 'lucide-react';
 import {
   format,
   startOfWeek,
@@ -23,10 +23,10 @@ import {
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
-import { appointmentsApi, patientsApi } from '@/api/endpoints';
+import { appointmentsApi, calendarEventsApi, patientsApi } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
 import { NewAppointmentDialog } from '@/components/NewAppointmentDialog';
-import type { Patient, Appointment } from '@/types';
+import type { Patient, Appointment, CalendarEvent } from '@/types';
 
 const HOURS = Array.from({ length: 22 }, (_, i) => {
   const h = 8 + Math.floor(i / 2);
@@ -44,12 +44,22 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   mois: 'Mois',
 };
 
+// L'agenda mélange deux types de blocs : des rendez-vous (liés à un
+// patient) et des événements libres (sans patient — pause, réunion,
+// blocage de créneau). On les combine dans une seule liste pour le rendu
+// de la grille, tout en gardant l'objet d'origine intact sous `data` pour
+// ne jamais perdre de type ni mélanger les champs des deux modèles.
+type AgendaItem =
+  | { kind: 'appointment'; data: Appointment }
+  | { kind: 'event'; data: CalendarEvent };
+
 export function AgendaPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('semaine');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogPatient, setDialogPatient] = useState<Patient | null>(null);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -66,7 +76,7 @@ export function AgendaPage() {
   const rangeEnd =
     viewMode === 'jour' ? endOfDay(currentDate) : viewMode === 'semaine' ? addDays(weekStart, 6) : monthGridEnd;
 
-  const { data: appointments, isLoading } = useQuery({
+  const { data: appointments, isLoading: isLoadingAppointments } = useQuery({
     queryKey: ['appointments', viewMode, rangeStart.toISOString()],
     queryFn: () =>
       appointmentsApi.list({
@@ -74,6 +84,21 @@ export function AgendaPage() {
         dateFin: rangeEnd.toISOString(),
       }),
   });
+
+  const { data: events, isLoading: isLoadingEvents } = useQuery({
+    queryKey: ['calendar-events', viewMode, rangeStart.toISOString()],
+    queryFn: () =>
+      calendarEventsApi.list({
+        dateDebut: rangeStart.toISOString(),
+        dateFin: rangeEnd.toISOString(),
+      }),
+  });
+
+  const isLoading = isLoadingAppointments || isLoadingEvents;
+  const items: AgendaItem[] = [
+    ...(appointments ?? []).map((a) => ({ kind: 'appointment' as const, data: a })),
+    ...(events ?? []).map((e) => ({ kind: 'event' as const, data: e })),
+  ];
 
   // Ouvre automatiquement le dialogue avec un patient présélectionné quand on
   // arrive depuis /agenda?patientId=123 (ex. bouton "Créer RDV" des Rappels).
@@ -109,10 +134,12 @@ export function AgendaPage() {
     setIsDialogOpen(false);
     setDialogPatient(null);
     setEditingAppointment(null);
+    setEditingEvent(null);
   };
 
-  const openEditDialog = (appt: Appointment) => {
-    setEditingAppointment(appt);
+  const openEdit = (item: AgendaItem) => {
+    if (item.kind === 'appointment') setEditingAppointment(item.data);
+    else setEditingEvent(item.data);
   };
 
   const goToPrevious = () => {
@@ -200,7 +227,7 @@ export function AgendaPage() {
               <MonthGrid
                 monthDays={monthDays}
                 currentMonth={currentDate}
-                appointments={appointments}
+                items={items}
                 isLoading={isLoading}
                 onSelectDay={goToDay}
               />
@@ -209,9 +236,9 @@ export function AgendaPage() {
             <div className="overflow-x-auto">
               <HourGrid
                 days={viewMode === 'jour' ? [currentDate] : weekDays}
-                appointments={appointments}
+                items={items}
                 isLoading={isLoading}
-                onEdit={openEditDialog}
+                onEdit={openEdit}
               />
             </div>
           )}
@@ -219,10 +246,11 @@ export function AgendaPage() {
       </div>
 
       <NewAppointmentDialog
-        isOpen={isDialogOpen || !!editingAppointment}
+        isOpen={isDialogOpen || !!editingAppointment || !!editingEvent}
         onClose={closeDialog}
         initialPatient={dialogPatient}
         appointment={editingAppointment}
+        calendarEvent={editingEvent}
       />
     </>
   );
@@ -243,6 +271,9 @@ const STATUT_INFO: Record<string, { label: string; dot: string }> = {
   no_show: { label: 'No-show', dot: '#b91c1c' },
 };
 
+// Couleur neutre pour les événements sans patient (pas de notion de statut).
+const EVENT_COLOR = '#64748b';
+
 /** Position (en minutes depuis 08:00) de l'instant présent, ou null si hors grille. */
 function useNowOffset() {
   const [now, setNow] = useState(new Date());
@@ -258,14 +289,14 @@ function useNowOffset() {
 /** Grille horaire (08:00-18:30) utilisée pour les vues Jour et Semaine. */
 function HourGrid({
   days,
-  appointments,
+  items,
   isLoading,
   onEdit,
 }: {
   days: Date[];
-  appointments?: Appointment[];
+  items: AgendaItem[];
   isLoading: boolean;
-  onEdit: (appt: Appointment) => void;
+  onEdit: (item: AgendaItem) => void;
 }) {
   const gridTemplateColumns = `52px repeat(${days.length}, minmax(96px, 1fr))`;
   const nowOffset = useNowOffset();
@@ -320,8 +351,8 @@ function HourGrid({
                 const [h, m] = hour.split(':').map(Number);
                 const isToday = isSameDay(day, new Date());
 
-                const appt = appointments?.find((a) => {
-                  const aDate = parseISO(a.dateDebut);
+                const item = items.find((it) => {
+                  const aDate = parseISO(it.data.dateDebut);
                   return isSameDay(aDate, day) && aDate.getHours() === h && aDate.getMinutes() === m;
                 });
 
@@ -339,7 +370,7 @@ function HourGrid({
                     } ${isToday ? 'bg-accent-500/[0.04]' : ''}`}
                     style={{ height: `${ROW_HEIGHT}px` }}
                   >
-                    {appt && <AppointmentBlock appt={appt} onEdit={onEdit} />}
+                    {item && <AgendaBlock item={item} onEdit={onEdit} />}
                     {showNowLine && nowOffset && (
                       <div
                         className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
@@ -365,17 +396,17 @@ function HourGrid({
 
 const MONTH_WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-/** Grille mensuelle : une case par jour avec un aperçu des RDV du jour. */
+/** Grille mensuelle : une case par jour avec un aperçu des RDV/événements du jour. */
 function MonthGrid({
   monthDays,
   currentMonth,
-  appointments,
+  items,
   isLoading,
   onSelectDay,
 }: {
   monthDays: Date[];
   currentMonth: Date;
-  appointments?: Appointment[];
+  items: AgendaItem[];
   isLoading: boolean;
   onSelectDay: (day: Date) => void;
 }) {
@@ -401,11 +432,11 @@ function MonthGrid({
           {monthDays.map((day) => {
             const inMonth = isSameMonth(day, currentMonth);
             const isToday = isSameDay(day, new Date());
-            const dayAppointments = (appointments ?? [])
-              .filter((a) => isSameDay(parseISO(a.dateDebut), day))
-              .sort((a, b) => a.dateDebut.localeCompare(b.dateDebut));
-            const visible = dayAppointments.slice(0, 3);
-            const extra = dayAppointments.length - visible.length;
+            const dayItems = items
+              .filter((it) => isSameDay(parseISO(it.data.dateDebut), day))
+              .sort((a, b) => a.data.dateDebut.localeCompare(b.data.dateDebut));
+            const visible = dayItems.slice(0, 3);
+            const extra = dayItems.length - visible.length;
 
             return (
               <button
@@ -423,18 +454,23 @@ function MonthGrid({
                   {format(day, 'd')}
                 </div>
                 <div className="space-y-0.5">
-                  {visible.map((a) => (
-                    <div
-                      key={a.id}
-                      className="text-[10px] leading-tight truncate rounded px-1 py-0.5"
-                      style={{
-                        background: `${STATUT_INFO[a.statut]?.dot || '#94a3b8'}22`,
-                        color: STATUT_INFO[a.statut]?.dot || '#94a3b8',
-                      }}
-                    >
-                      {format(parseISO(a.dateDebut), 'HH:mm')} {a.patient?.prenom} {a.patient?.nom}
-                    </div>
-                  ))}
+                  {visible.map((it) => {
+                    const color =
+                      it.kind === 'appointment' ? STATUT_INFO[it.data.statut]?.dot || '#94a3b8' : EVENT_COLOR;
+                    const label =
+                      it.kind === 'appointment'
+                        ? `${it.data.patient?.prenom ?? ''} ${it.data.patient?.nom ?? ''}`.trim()
+                        : it.data.titre;
+                    return (
+                      <div
+                        key={`${it.kind}-${it.data.id}`}
+                        className="text-[10px] leading-tight truncate rounded px-1 py-0.5"
+                        style={{ background: `${color}22`, color }}
+                      >
+                        {format(parseISO(it.data.dateDebut), 'HH:mm')} {label}
+                      </div>
+                    );
+                  })}
                   {extra > 0 && <div className="text-[10px] text-slate-400 px-1">+{extra} autre{extra > 1 ? 's' : ''}</div>}
                 </div>
               </button>
@@ -446,7 +482,15 @@ function MonthGrid({
   );
 }
 
-function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: Appointment) => void }) {
+function AgendaBlock({ item, onEdit }: { item: AgendaItem; onEdit: (item: AgendaItem) => void }) {
+  return item.kind === 'appointment' ? (
+    <AppointmentBlock appt={item.data} onEdit={() => onEdit(item)} />
+  ) : (
+    <EventBlock event={item.data} onEdit={() => onEdit(item)} />
+  );
+}
+
+function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: () => void }) {
   const queryClient = useQueryClient();
   const start = parseISO(appt.dateDebut);
   const end = parseISO(appt.dateFin);
@@ -469,7 +513,7 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onEdit(appt);
+    onEdit();
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -529,5 +573,72 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: (appt: 
         </div>
       </div>
     </Link>
+  );
+}
+
+/** Bloc "événement" (sans patient) — même gabarit que AppointmentBlock, mais
+ * ni lien vers une fiche patient ni statut clinique : un clic ouvre
+ * directement l'édition. */
+function EventBlock({ event, onEdit }: { event: CalendarEvent; onEdit: () => void }) {
+  const queryClient = useQueryClient();
+  const start = parseISO(event.dateDebut);
+  const end = parseISO(event.dateFin);
+  const durationMin = (end.getTime() - start.getTime()) / 60000;
+  const height = (durationMin / 30) * ROW_HEIGHT;
+  const showTime = height >= 44;
+
+  const deleteMutation = useMutation({
+    mutationFn: () => calendarEventsApi.delete(event.id),
+    onSuccess: () => {
+      toast.success('Événement supprimé');
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Impossible de supprimer cet événement');
+    },
+  });
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirm(`Supprimer l'événement "${event.titre}" ?`)) {
+      deleteMutation.mutate();
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      className="group absolute left-0.5 right-0.5 top-0 rounded-md px-2 py-1 text-[11px] font-medium overflow-hidden cursor-pointer bg-slate-50 border border-slate-200 border-dashed hover:z-10 hover:shadow-md transition-shadow text-left"
+      style={{
+        height: `${height - 2}px`,
+        borderLeft: `3px solid ${EVENT_COLOR}`,
+      }}
+    >
+      <div className="flex items-start justify-between gap-1">
+        <div className="min-w-0">
+          {showTime && (
+            <div className="text-[9px] text-slate-400 font-normal leading-tight">
+              {format(start, 'HH:mm')} - {format(end, 'HH:mm')}
+            </div>
+          )}
+          <div className="font-semibold truncate flex items-center gap-1 text-slate-700">
+            <CalendarClock size={10} className="flex-shrink-0 text-slate-400" />
+            <span className="truncate">{event.titre}</span>
+          </div>
+        </div>
+        <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0 bg-white/95 rounded shadow-sm px-0.5 py-0.5">
+          <button
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            title="Supprimer l'événement"
+            className="p-0.5 rounded hover:bg-slate-100 text-slate-500 hover:text-rose-600 transition"
+          >
+            <Trash2 size={11} />
+          </button>
+        </div>
+      </div>
+    </button>
   );
 }
