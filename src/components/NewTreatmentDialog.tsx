@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Save, Plus, Trash2 } from 'lucide-react';
+import { X, Save, Plus, Trash2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../api/client';
 
@@ -16,6 +16,11 @@ interface TreatmentAct {
   cout: number;
   montantRecu: number;
   modeReglement: string;
+  // Actes courants (+ actes personnalisés ajoutés via "Autre") sélectionnés
+  // pour cette ligne — sert uniquement à piloter le menu déroulant, `libelle`
+  // (envoyé au backend) est reconstruit à partir de cette liste à chaque
+  // sélection/désélection.
+  selectedCommonActs: string[];
 }
 
 const COMMON_ACTS = [
@@ -41,17 +46,45 @@ const PAYMENT_MODES = [
   { value: 'cnam', label: 'CNAM' },
 ];
 
+const emptyAct = (): TreatmentAct => ({
+  libelle: '',
+  dents: '',
+  cout: 0,
+  montantRecu: 0,
+  modeReglement: 'especes',
+  selectedCommonActs: [],
+});
+
 export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentDialogProps) {
   const queryClient = useQueryClient();
   const [dateSoin, setDateSoin] = useState(new Date().toISOString().split('T')[0]);
   const [observations, setObservations] = useState('');
-  const [acts, setActs] = useState<TreatmentAct[]>([
-    { libelle: '', dents: '', cout: 0, montantRecu: 0, modeReglement: 'especes' },
-  ]);
+  const [acts, setActs] = useState<TreatmentAct[]>([emptyAct()]);
+
+  // Popover "actes courants" (sélection multiple) ouvert pour la ligne
+  // d'index `openActsMenu`, ou aucun si null. Un seul ouvert à la fois.
+  const [openActsMenu, setOpenActsMenu] = useState<number | null>(null);
+  const [customActDrafts, setCustomActDrafts] = useState<Record<number, string>>({});
+  const menuContainerRef = useRef<HTMLTableCellElement | null>(null);
+
+  useEffect(() => {
+    if (openActsMenu === null) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target as Node)) {
+        setOpenActsMenu(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openActsMenu]);
 
   const createTreatment = useMutation({
     mutationFn: async () => {
-      const validActs = acts.filter((a) => a.libelle.trim() !== '');
+      const validActs = acts
+        .filter((a) => a.libelle.trim() !== '')
+        // `selectedCommonActs` ne sert qu'à l'UI du sélecteur multiple, on ne
+        // l'envoie pas au backend.
+        .map(({ selectedCommonActs, ...act }) => act);
       if (validActs.length === 0) {
         throw new Error("Ajoutez au moins un acte");
       }
@@ -70,7 +103,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
       onClose();
       setDateSoin(new Date().toISOString().split('T')[0]);
       setObservations('');
-      setActs([{ libelle: '', dents: '', cout: 0, montantRecu: 0, modeReglement: 'especes' }]);
+      setActs([emptyAct()]);
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.message || error?.message || "Erreur lors de la création";
@@ -79,12 +112,14 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   });
 
   const addAct = () => {
-    setActs([...acts, { libelle: '', dents: '', cout: 0, montantRecu: 0, modeReglement: 'especes' }]);
+    setActs([...acts, emptyAct()]);
+    setOpenActsMenu(null);
   };
 
   const removeAct = (index: number) => {
     if (acts.length === 1) return;
     setActs(acts.filter((_, i) => i !== index));
+    setOpenActsMenu(null);
   };
 
   const updateAct = (index: number, field: keyof TreatmentAct, value: string | number) => {
@@ -93,20 +128,47 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
     setActs(newActs);
   };
 
-  // Un clic sur un acte courant remplit la dernière ligne si elle est encore
-  // vide (cas le plus fréquent : premier acte de la séance), sinon ajoute une
-  // nouvelle ligne — ça permet d'enchaîner plusieurs actes courants sans avoir
-  // à cliquer "Ajouter une ligne" à chaque fois.
-  const addQuickAct = (qa: { label: string; cost: number }) => {
+  // Coche/décoche un acte courant pour la ligne `index` : le libellé de la
+  // ligne est reconstruit à partir de tous les actes sélectionnés (jointure
+  // " + "), et le coût total est recalculé — sauf si le montant reçu avait
+  // déjà été modifié manuellement (montantRecu ≠ cout), auquel cas on le
+  // laisse tel quel pour ne pas écraser une saisie de l'utilisateur.
+  const toggleCommonAct = (index: number, qa: { label: string; cost: number }) => {
     setActs((prev) => {
-      const last = prev[prev.length - 1];
-      if (last && last.libelle.trim() === '') {
-        const updated = [...prev];
-        updated[updated.length - 1] = { ...last, libelle: qa.label, cout: qa.cost, montantRecu: qa.cost };
-        return updated;
-      }
-      return [...prev, { libelle: qa.label, dents: '', cout: qa.cost, montantRecu: qa.cost, modeReglement: 'especes' }];
+      const updated = [...prev];
+      const row = updated[index];
+      const isSelected = row.selectedCommonActs.includes(qa.label);
+      const newSelected = isSelected
+        ? row.selectedCommonActs.filter((l) => l !== qa.label)
+        : [...row.selectedCommonActs, qa.label];
+      const newCout = newSelected.reduce((sum, label) => {
+        const found = COMMON_ACTS.find((a) => a.label === label);
+        return sum + (found?.cost || 0);
+      }, 0);
+      const montantRecuWasSynced = row.montantRecu === row.cout;
+      updated[index] = {
+        ...row,
+        selectedCommonActs: newSelected,
+        libelle: newSelected.join(' + '),
+        cout: newCout,
+        montantRecu: montantRecuWasSynced ? newCout : row.montantRecu,
+      };
+      return updated;
     });
+  };
+
+  const addCustomAct = (index: number) => {
+    const text = (customActDrafts[index] || '').trim();
+    if (!text) return;
+    setActs((prev) => {
+      const row = prev[index];
+      if (row.selectedCommonActs.includes(text)) return prev;
+      const updated = [...prev];
+      const newSelected = [...row.selectedCommonActs, text];
+      updated[index] = { ...row, selectedCommonActs: newSelected, libelle: newSelected.join(' + ') };
+      return updated;
+    });
+    setCustomActDrafts((d) => ({ ...d, [index]: '' }));
   };
 
   const totalCost = acts.reduce((sum, a) => sum + (Number(a.cout) || 0), 0);
@@ -158,23 +220,6 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
               </button>
             </div>
 
-            {/* Suggestions rapides - un clic ajoute directement une ligne dans le tableau */}
-            <div className="mb-3">
-              <p className="text-xs text-slate-600 mb-2">💡 Actes courants (clique pour ajouter une ligne)</p>
-              <div className="flex flex-wrap gap-1.5">
-                {COMMON_ACTS.map((qa) => (
-                  <button
-                    key={qa.label}
-                    type="button"
-                    onClick={() => addQuickAct(qa)}
-                    className="text-xs px-3 py-1.5 rounded-full border transition font-medium bg-white border-slate-200 text-slate-700 hover:border-primary-400 hover:text-primary-700"
-                  >
-                    {qa.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Tableau des actes de la séance, façon fiche patient papier */}
             <div className="border border-slate-200 rounded-xl overflow-x-auto">
               <table className="w-full text-sm min-w-[560px]">
@@ -191,14 +236,84 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                 <tbody>
                   {acts.map((act, index) => (
                     <tr key={index} className="border-b border-slate-100 last:border-0">
-                      <td className="px-3 py-2">
-                        <input
-                          type="text"
-                          value={act.libelle}
-                          onChange={(e) => updateAct(index, 'libelle', e.target.value)}
-                          placeholder="Libellé de l'acte"
-                          className="input py-1.5 text-sm"
-                        />
+                      <td
+                        className="px-3 py-2 relative"
+                        ref={openActsMenu === index ? menuContainerRef : undefined}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setOpenActsMenu(openActsMenu === index ? null : index)}
+                          className="input py-1.5 text-sm w-full text-left flex items-center justify-between gap-2 bg-white"
+                        >
+                          <span
+                            className={`truncate ${act.libelle ? 'text-slate-900' : 'text-slate-400'}`}
+                            title={act.libelle}
+                          >
+                            {act.libelle || 'Sélectionner un ou plusieurs actes'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                        </button>
+
+                        {openActsMenu === index && (
+                          <div className="absolute z-20 top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg p-3">
+                            <p className="text-xs text-slate-500 mb-2">
+                              💡 Actes courants (sélection multiple)
+                            </p>
+                            <div className="max-h-48 overflow-y-auto space-y-0.5 mb-3">
+                              {COMMON_ACTS.map((qa) => {
+                                const checked = act.selectedCommonActs.includes(qa.label);
+                                return (
+                                  <label
+                                    key={qa.label}
+                                    className="flex items-center gap-2 text-sm px-1.5 py-1 rounded hover:bg-slate-50 cursor-pointer"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggleCommonAct(index, qa)}
+                                      className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                    />
+                                    <span className="flex-1">{qa.label}</span>
+                                    {qa.cost > 0 && (
+                                      <span className="text-xs text-slate-400">{qa.cost} DT</span>
+                                    )}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                              <input
+                                type="text"
+                                value={customActDrafts[index] || ''}
+                                onChange={(e) =>
+                                  setCustomActDrafts((d) => ({ ...d, [index]: e.target.value }))
+                                }
+                                placeholder="Autre acte..."
+                                className="input py-1 text-xs flex-1"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addCustomAct(index);
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => addCustomAct(index)}
+                                className="text-xs px-2 py-1.5 rounded bg-primary-50 text-primary-700 font-medium hover:bg-primary-100 whitespace-nowrap"
+                              >
+                                Ajouter
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setOpenActsMenu(null)}
+                              className="w-full text-center text-xs text-slate-400 hover:text-slate-600 mt-2 pt-2 border-t border-slate-100"
+                            >
+                              Fermer
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <input
