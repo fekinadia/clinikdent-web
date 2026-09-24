@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Calendar, Activity, Edit } from 'lucide-react';
+import { Plus, Activity, Edit } from 'lucide-react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { api } from '../api/client';
 import { NewTreatmentDialog } from './NewTreatmentDialog';
@@ -28,14 +27,6 @@ interface Treatment {
   observations?: string;
   acts: TreatmentAct[];
 }
-
-const PAYMENT_LABELS: Record<string, string> = {
-  especes: 'Espèces',
-  cheque: 'Chèque',
-  d17: 'D17',
-  virement: 'Virement',
-  cnam: 'CNAM',
-};
 
 export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
   const qc = useQueryClient();
@@ -146,6 +137,22 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
     },
   });
 
+  // Totaux globaux affichés au-dessus du tableau, sur le même principe que
+  // le "Payé" / "Dû" qui apparaissait auparavant séance par séance.
+  const totalPaidAll = treatments.reduce(
+    (sum, t) => sum + t.acts.reduce((s, a) => s + Number(a.montantRecu), 0),
+    0,
+  );
+  const totalDueAll = treatments.reduce(
+    (sum, t) =>
+      sum +
+      t.acts.reduce(
+        (s, a) => s + Math.max(0, Number(a.cout) - Number(a.montantRecu) - Number(a.remise || 0)),
+        0,
+      ),
+    0,
+  );
+
   return (
     <div className="p-6">
       {/* Header avec bouton */}
@@ -190,125 +197,101 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
         </div>
       )}
 
-      {/* Liste des soins */}
+      {/* Tableau des soins, façon fiche patient papier : Date / Dent / Acte / Payé / Reste */}
       {!isLoading && treatments.length > 0 && (
-        <div className="space-y-4">
-          {treatments.map((treatment) => {
-            const totalCost = treatment.acts.reduce((s, a) => s + Number(a.cout), 0);
-            const totalPaid = treatment.acts.reduce((s, a) => s + Number(a.montantRecu), 0);
-            const totalDue = totalCost - totalPaid;
+        <div className="border border-slate-200 rounded-xl overflow-hidden">
+          {(totalPaidAll > 0.01 || totalDueAll > 0.01) && (
+            <div className="flex items-center gap-4 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-sm">
+              <span className="text-emerald-600 font-medium">Payé : {totalPaidAll.toFixed(2)} DT</span>
+              {totalDueAll > 0.01 && (
+                <span className="text-rose-600 font-medium">Reste dû : {totalDueAll.toFixed(2)} DT</span>
+              )}
+            </div>
+          )}
 
-            return (
-              <div
-                key={treatment.id}
-                className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition"
-              >
-                {/* En-tête */}
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div>
-                      {editingId === treatment.id ? (
-                        <input
-                          type="date"
-                          value={editForm?.dateSoin || ''}
-                          onChange={(e) =>
-                            setEditForm((f) => (f ? { ...f, dateSoin: e.target.value } : f))
-                          }
-                          className="input py-1 text-sm"
-                        />
-                      ) : (
-                        <div className="font-semibold text-slate-900">
-                          {format(new Date(treatment.dateSoin), 'EEEE d MMMM yyyy', { locale: fr })}
-                        </div>
-                      )}
-                      <div className="text-xs text-slate-500">
-                        {treatment.acts.length} acte{treatment.acts.length > 1 ? 's' : ''}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="text-right">
-                      <div className="text-xs text-slate-500">Total</div>
-                      <div className="font-semibold text-slate-900">{totalCost.toFixed(2)} DT</div>
-                    </div>
-                    {editingId !== treatment.id && (
-                      <button
-                        onClick={() => startEditing(treatment)}
-                        className="text-slate-400 hover:text-primary-600 transition"
-                        title="Modifier"
-                      >
-                        <Edit size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                <th className="px-4 py-2.5 whitespace-nowrap">Date</th>
+                <th className="px-4 py-2.5 whitespace-nowrap">Dent</th>
+                <th className="px-4 py-2.5">Acte</th>
+                <th className="px-4 py-2.5 text-right whitespace-nowrap">Payé</th>
+                <th className="px-4 py-2.5 text-right whitespace-nowrap">Reste</th>
+                <th className="px-4 py-2.5 w-28"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {treatments.map((treatment) => {
+                const isEditing = editingId === treatment.id;
+                const editingActsById = new Map((editForm?.acts || []).map((a) => [a.id, a]));
+                const costTooLow = isEditing ? findCostTooLow(treatment) : null;
+                const receivedTooHigh = isEditing ? findReceivedTooHigh(treatment) : null;
 
-                {/* Liste des actes */}
-                <div className="space-y-2">
-                  {treatment.acts.map((act) => {
-                    const reste = Number(act.cout) - Number(act.montantRecu) - Number(act.remise || 0);
-                    const editingAct = editForm?.acts.find((a) => a.id === act.id);
-                    if (editingId === treatment.id && editingAct) {
-                      const nouveauCout = parseFloat(editingAct.cout);
-                      const nouveauMontantRecu = parseFloat(editingAct.montantRecu);
-                      const montantRecuFinal = Number.isNaN(nouveauMontantRecu)
-                        ? Number(act.montantRecu)
-                        : nouveauMontantRecu;
-                      const coutFinal = Number.isNaN(nouveauCout) ? Number(act.cout) : nouveauCout;
-                      const plafondEncaisse = coutFinal - Number(act.remise || 0);
-                      const coutTropBas =
-                        !Number.isNaN(nouveauCout) && nouveauCout < montantRecuFinal - 0.01;
-                      const montantTropHaut =
-                        !Number.isNaN(nouveauMontantRecu) &&
-                        nouveauMontantRecu > plafondEncaisse + 0.01;
-                      return (
-                        <div key={act.id} className="py-2 space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={editingAct.libelle}
-                              onChange={(e) =>
-                                setEditForm((f) =>
-                                  f
-                                    ? {
-                                        ...f,
-                                        acts: f.acts.map((a) =>
-                                          a.id === act.id ? { ...a, libelle: e.target.value } : a,
-                                        ),
-                                      }
-                                    : f,
-                                )
-                              }
-                              className="input text-sm flex-1"
-                              placeholder="Libellé de l'acte"
-                            />
-                            <div className="w-24">
+                return (
+                  <Fragment key={treatment.id}>
+                    {treatment.acts.map((act, idx) => {
+                      const reste = Math.max(
+                        0,
+                        Number(act.cout) - Number(act.montantRecu) - Number(act.remise || 0),
+                      );
+                      const editingAct = editingActsById.get(act.id);
+
+                      if (isEditing && editingAct) {
+                        return (
+                          <tr key={act.id} className="border-b border-slate-100 bg-primary-50/30">
+                            <td className="px-4 py-2 align-top whitespace-nowrap">
+                              {idx === 0 && (
+                                <input
+                                  type="date"
+                                  value={editForm?.dateSoin || ''}
+                                  onChange={(e) =>
+                                    setEditForm((f) => (f ? { ...f, dateSoin: e.target.value } : f))
+                                  }
+                                  className="input py-1 text-sm w-36"
+                                />
+                              )}
+                            </td>
+                            <td className="px-4 py-2 align-top">
                               <input
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={editingAct.cout}
+                                type="text"
+                                value={editingAct.dents}
                                 onChange={(e) =>
                                   setEditForm((f) =>
                                     f
                                       ? {
                                           ...f,
                                           acts: f.acts.map((a) =>
-                                            a.id === act.id ? { ...a, cout: e.target.value } : a,
+                                            a.id === act.id ? { ...a, dents: e.target.value } : a,
                                           ),
                                         }
                                       : f,
                                   )
                                 }
-                                className={`input text-sm text-right ${coutTropBas ? 'border-rose-400' : ''}`}
-                                placeholder="Prix (DT)"
-                                title="Prix de l'acte (DT)"
+                                className="input text-sm w-20"
+                                placeholder="11;12"
                               />
-                            </div>
-                            <div className="w-24">
+                            </td>
+                            <td className="px-4 py-2 align-top">
+                              <input
+                                type="text"
+                                value={editingAct.libelle}
+                                onChange={(e) =>
+                                  setEditForm((f) =>
+                                    f
+                                      ? {
+                                          ...f,
+                                          acts: f.acts.map((a) =>
+                                            a.id === act.id ? { ...a, libelle: e.target.value } : a,
+                                          ),
+                                        }
+                                      : f,
+                                  )
+                                }
+                                className="input text-sm w-full"
+                                placeholder="Libellé de l'acte"
+                              />
+                            </td>
+                            <td className="px-4 py-2 align-top">
                               <input
                                 type="number"
                                 min="0"
@@ -326,136 +309,149 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                                       : f,
                                   )
                                 }
-                                className={`input text-sm text-right ${montantTropHaut ? 'border-rose-400' : ''}`}
-                                placeholder="Payé (DT)"
+                                className="input text-sm text-right w-20"
+                                placeholder="Payé"
                                 title="Montant encaissé (DT)"
                               />
+                            </td>
+                            <td className="px-4 py-2 align-top">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={editingAct.cout}
+                                onChange={(e) =>
+                                  setEditForm((f) =>
+                                    f
+                                      ? {
+                                          ...f,
+                                          acts: f.acts.map((a) =>
+                                            a.id === act.id ? { ...a, cout: e.target.value } : a,
+                                          ),
+                                        }
+                                      : f,
+                                  )
+                                }
+                                className="input text-sm text-right w-20"
+                                placeholder="Prix"
+                                title="Prix total de l'acte (DT) — le Reste est recalculé automatiquement"
+                              />
+                            </td>
+                            <td className="px-4 py-2 align-top"></td>
+                          </tr>
+                        );
+                      }
+
+                      return (
+                        <tr key={act.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                          <td className="px-4 py-2.5 whitespace-nowrap text-slate-700">
+                            {idx === 0 ? format(new Date(treatment.dateSoin), 'dd/MM/yy') : ''}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-700">{act.dents || '—'}</td>
+                          <td className="px-4 py-2.5 text-slate-900 font-medium">
+                            {act.libelle}
+                            {act.modeReglement && (
+                              <span className="ml-2 text-xs font-normal text-slate-400">
+                                ({act.modeReglement === 'especes' ? 'Espèces'
+                                  : act.modeReglement === 'cheque' ? 'Chèque'
+                                  : act.modeReglement === 'd17' ? 'D17'
+                                  : act.modeReglement === 'virement' ? 'Virement'
+                                  : act.modeReglement === 'cnam' ? 'CNAM'
+                                  : act.modeReglement})
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-medium text-emerald-600 whitespace-nowrap">
+                            {Number(act.montantRecu).toFixed(2)}
+                          </td>
+                          <td
+                            className={`px-4 py-2.5 text-right font-medium whitespace-nowrap ${
+                              reste > 0.01 ? 'text-rose-600' : 'text-slate-400'
+                            }`}
+                          >
+                            {reste > 0.01 ? reste.toFixed(2) : '—'}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center justify-end gap-2">
+                              {reste > 0.01 && (
+                                <button
+                                  onClick={() => setPayingAct(act)}
+                                  className="text-xs font-medium text-primary-600 hover:text-primary-700 whitespace-nowrap"
+                                >
+                                  Encaisser
+                                </button>
+                              )}
+                              {idx === 0 && (
+                                <button
+                                  onClick={() => startEditing(treatment)}
+                                  className="text-slate-400 hover:text-primary-600 transition"
+                                  title="Modifier la séance"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                              )}
                             </div>
-                          </div>
-                          <input
-                            type="text"
-                            value={editingAct.dents}
-                            onChange={(e) =>
-                              setEditForm((f) =>
-                                f
-                                  ? {
-                                      ...f,
-                                      acts: f.acts.map((a) =>
-                                        a.id === act.id ? { ...a, dents: e.target.value } : a,
-                                      ),
-                                    }
-                                  : f,
-                              )
-                            }
-                            className="input text-sm"
-                            placeholder="Dents concernées (ex : 11;12;13)"
-                          />
-                          {coutTropBas && (
-                            <p className="text-xs text-rose-600">
-                              Le prix ne peut pas être inférieur au montant encaissé ({montantRecuFinal.toFixed(2)} DT).
-                            </p>
-                          )}
-                          {montantTropHaut && (
-                            <p className="text-xs text-rose-600">
-                              Le montant encaissé ne peut pas dépasser le prix{Number(act.remise || 0) > 0 ? ' moins la remise' : ''} ({plafondEncaisse.toFixed(2)} DT).
-                            </p>
-                          )}
-                        </div>
+                          </td>
+                        </tr>
                       );
-                    }
-                    return (
-                      <div key={act.id} className="flex items-center justify-between py-2">
-                        <div className="flex-1">
-                          <div className="font-medium text-slate-900">{act.libelle}</div>
-                          {act.dents && (
-                            <div className="text-xs text-slate-500 mt-0.5">Dents : {act.dents}</div>
+                    })}
+
+                    {isEditing && (
+                      <tr className="border-b border-slate-200 bg-primary-50/30">
+                        <td colSpan={6} className="px-4 py-3">
+                          <label className="label">Observations</label>
+                          <textarea
+                            value={editForm?.observations || ''}
+                            onChange={(e) =>
+                              setEditForm((f) => (f ? { ...f, observations: e.target.value } : f))
+                            }
+                            className="input"
+                            rows={2}
+                          />
+                          {costTooLow && (
+                            <p className="text-xs text-rose-600 mt-1.5">
+                              Le prix de « {costTooLow.libelle} » ne peut pas être inférieur au montant déjà
+                              encaissé ({costTooLow.montantRecu.toFixed(2)} DT).
+                            </p>
                           )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-sm font-medium text-slate-900">
-                              {Number(act.cout).toFixed(2)} DT
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {Number(act.montantRecu).toFixed(2)} DT payé
-                              {act.modeReglement && ` (${PAYMENT_LABELS[act.modeReglement] || act.modeReglement})`}
-                            </div>
-                          </div>
-                          {reste > 0.01 && (
+                          {receivedTooHigh && (
+                            <p className="text-xs text-rose-600 mt-1.5">
+                              Le montant encaissé pour « {receivedTooHigh.libelle} » ne peut pas dépasser le
+                              prix ({receivedTooHigh.plafond.toFixed(2)} DT).
+                            </p>
+                          )}
+                          <div className="flex justify-end gap-2 mt-3">
                             <button
-                              onClick={() => setPayingAct(act)}
-                              className="px-3 py-1.5 text-xs font-medium text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition whitespace-nowrap"
+                              onClick={cancelEditing}
+                              className="btn-ghost"
+                              disabled={updateMutation.isPending}
                             >
-                              Encaisser
+                              Annuler
                             </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                            <button
+                              onClick={() => updateMutation.mutate()}
+                              className="btn-primary"
+                              disabled={updateMutation.isPending || !!costTooLow || !!receivedTooHigh}
+                            >
+                              {updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
 
-                {/* Résumé financier */}
-                {(totalPaid > 0 || totalDue > 0) && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-4">
-                      <span className="text-emerald-600 font-medium">
-                        Payé : {totalPaid.toFixed(2)} DT
-                      </span>
-                      {totalDue > 0 && (
-                        <span className="text-rose-600 font-medium">
-                          Dû : {totalDue.toFixed(2)} DT
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Observations */}
-                {editingId === treatment.id ? (
-                  <div className="mt-3 pt-3 border-t border-slate-100">
-                    <label className="label">Observations</label>
-                    <textarea
-                      value={editForm?.observations || ''}
-                      onChange={(e) => setEditForm((f) => (f ? { ...f, observations: e.target.value } : f))}
-                      className="input"
-                      rows={2}
-                    />
-                    <div className="flex justify-end gap-2 mt-3">
-                      <button onClick={cancelEditing} className="btn-ghost" disabled={updateMutation.isPending}>
-                        Annuler
-                      </button>
-                      <button
-                        onClick={() => updateMutation.mutate()}
-                        className="btn-primary"
-                        disabled={
-                          updateMutation.isPending ||
-                          !!findCostTooLow(treatment) ||
-                          !!findReceivedTooHigh(treatment)
-                        }
-                        title={
-                          findCostTooLow(treatment)
-                            ? 'Corrigez le prix trop bas avant d\'enregistrer'
-                            : findReceivedTooHigh(treatment)
-                              ? 'Corrigez le montant encaissé trop élevé avant d\'enregistrer'
-                              : undefined
-                        }
-                      >
-                        {updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  treatment.observations && (
-                    <div className="mt-3 pt-3 border-t border-slate-100">
-                      <div className="text-xs text-slate-500 mb-1">Observations</div>
-                      <div className="text-sm text-slate-700">{treatment.observations}</div>
-                    </div>
-                  )
-                )}
-              </div>
-            );
-          })}
+                    {!isEditing && treatment.observations && (
+                      <tr className="border-b border-slate-100 last:border-0">
+                        <td colSpan={6} className="px-4 py-1.5 text-xs text-slate-500 italic bg-slate-50/50">
+                          {treatment.observations}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
