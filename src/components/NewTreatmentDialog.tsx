@@ -27,6 +27,10 @@ const COMMON_ACTS = [
   { label: 'Parage canalaire', cost: 90 },
   { label: 'Consultation', cost: 30 },
   { label: 'Radiographie', cost: 25 },
+  { label: 'OBC', cost: 0 },
+  { label: 'Polissage', cost: 0 },
+  { label: 'Endo', cost: 0 },
+  { label: 'Mise en forme', cost: 0 },
 ];
 
 const PAYMENT_MODES = [
@@ -89,15 +93,20 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
     setActs(newActs);
   };
 
-  const selectQuickAct = (index: number, act: { label: string; cost: number }) => {
-    const newActs = [...acts];
-    newActs[index] = {
-      ...newActs[index],
-      libelle: act.label,
-      cout: act.cost,
-      montantRecu: act.cost,
-    };
-    setActs(newActs);
+  // Un clic sur un acte courant remplit la dernière ligne si elle est encore
+  // vide (cas le plus fréquent : premier acte de la séance), sinon ajoute une
+  // nouvelle ligne — ça permet d'enchaîner plusieurs actes courants sans avoir
+  // à cliquer "Ajouter une ligne" à chaque fois.
+  const addQuickAct = (qa: { label: string; cost: number }) => {
+    setActs((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && last.libelle.trim() === '') {
+        const updated = [...prev];
+        updated[updated.length - 1] = { ...last, libelle: qa.label, cout: qa.cost, montantRecu: qa.cost };
+        return updated;
+      }
+      return [...prev, { libelle: qa.label, dents: '', cout: qa.cost, montantRecu: qa.cost, modeReglement: 'especes' }];
+    });
   };
 
   const totalCost = acts.reduce((sum, a) => sum + (Number(a.cout) || 0), 0);
@@ -145,120 +154,112 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
-                Ajouter un acte
+                Ajouter une ligne
               </button>
             </div>
 
-            <div className="space-y-3">
-              {acts.map((act, index) => (
-                <div key={index} className="bg-slate-50 rounded-xl p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs font-bold text-slate-400">ACTE #{index + 1}</span>
-                    {acts.length > 1 && (
-                      <button
-                        onClick={() => removeAct(index)}
-                        type="button"
-                        className="text-rose-500 hover:text-rose-700"
-                        aria-label="Supprimer cet acte"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+            {/* Suggestions rapides - un clic ajoute directement une ligne dans le tableau */}
+            <div className="mb-3">
+              <p className="text-xs text-slate-600 mb-2">💡 Actes courants (clique pour ajouter une ligne)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {COMMON_ACTS.map((qa) => (
+                  <button
+                    key={qa.label}
+                    type="button"
+                    onClick={() => addQuickAct(qa)}
+                    className="text-xs px-3 py-1.5 rounded-full border transition font-medium bg-white border-slate-200 text-slate-700 hover:border-primary-400 hover:text-primary-700"
+                  >
+                    {qa.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  {/* Suggestions rapides - SANS les prix */}
-                  <div>
-                    <label className="block text-xs text-slate-600 mb-2">
-                      💡 Actes courants (clique pour remplir libellé + coût)
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {COMMON_ACTS.map((qa) => {
-                        const isSelected = act.libelle === qa.label;
-                        return (
+            {/* Tableau des actes de la séance, façon fiche patient papier */}
+            <div className="border border-slate-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-3 py-2.5">Acte</th>
+                    <th className="px-3 py-2.5 w-20">Dent</th>
+                    <th className="px-3 py-2.5 w-24 text-right">Coût</th>
+                    <th className="px-3 py-2.5 w-24 text-right">Payé</th>
+                    <th className="px-3 py-2.5 w-32">Mode</th>
+                    <th className="px-3 py-2.5 w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {acts.map((act, index) => (
+                    <tr key={index} className="border-b border-slate-100 last:border-0">
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={act.libelle}
+                          onChange={(e) => updateAct(index, 'libelle', e.target.value)}
+                          placeholder="Libellé de l'acte"
+                          className="input py-1.5 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={act.dents}
+                          onChange={(e) => updateAct(index, 'dents', e.target.value)}
+                          placeholder="16, 26"
+                          className="input py-1.5 text-sm w-20"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={act.cout || ''}
+                          onChange={(e) => updateAct(index, 'cout', parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className="input py-1.5 text-sm w-24 text-right"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={act.montantRecu || ''}
+                          onChange={(e) => updateAct(index, 'montantRecu', parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className="input py-1.5 text-sm w-24 text-right"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={act.modeReglement}
+                          onChange={(e) => updateAct(index, 'modeReglement', e.target.value)}
+                          className="input py-1.5 text-sm w-32 bg-white"
+                        >
+                          {PAYMENT_MODES.map((pm) => (
+                            <option key={pm.value} value={pm.value}>
+                              {pm.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2">
+                        {acts.length > 1 && (
                           <button
-                            key={qa.label}
+                            onClick={() => removeAct(index)}
                             type="button"
-                            onClick={() => selectQuickAct(index, qa)}
-                            className="text-xs px-3 py-1.5 rounded-full border transition font-medium"
-                            style={
-                              isSelected
-                                ? { backgroundColor: '#dbeafe', borderColor: '#0e6ba8', color: '#0e6ba8' }
-                                : { backgroundColor: 'white', borderColor: '#e2e8f0', color: '#334155' }
-                            }
+                            className="text-rose-400 hover:text-rose-600"
+                            aria-label="Supprimer cette ligne"
                           >
-                            {qa.label}
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-slate-600 mb-1">Libellé de l'acte</label>
-                    <input
-                      type="text"
-                      value={act.libelle}
-                      onChange={(e) => updateAct(index, 'libelle', e.target.value)}
-                      placeholder="Sélectionne un acte courant ci-dessus, ou tape le tien"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-slate-600 mb-1">Dents concernées</label>
-                      <input
-                        type="text"
-                        value={act.dents}
-                        onChange={(e) => updateAct(index, 'dents', e.target.value)}
-                        placeholder="Ex: 16, 26, 36"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-600 mb-1">Mode de règlement</label>
-                      <select
-                        value={act.modeReglement}
-                        onChange={(e) => updateAct(index, 'modeReglement', e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
-                      >
-                        {PAYMENT_MODES.map((pm) => (
-                          <option key={pm.value} value={pm.value}>
-                            {pm.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-slate-600 mb-1">Coût (DT)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={act.cout || ''}
-                        onChange={(e) => updateAct(index, 'cout', parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-600 mb-1">Montant reçu (DT)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={act.montantRecu || ''}
-                        onChange={(e) => updateAct(index, 'montantRecu', parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
