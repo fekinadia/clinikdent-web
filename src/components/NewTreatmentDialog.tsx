@@ -27,19 +27,22 @@ interface TreatmentAct {
   selectedCommonActs: string[];
 }
 
+// Pas de prix par défaut : Payé/Reste sont toujours saisis à la main par
+// l'utilisateur (les tarifs varient trop d'un patient à l'autre pour être
+// devinés automatiquement).
 const COMMON_ACTS = [
-  { label: 'Détartrage', cost: 90 },
-  { label: 'Obturation (composite)', cost: 80 },
-  { label: 'Extraction simple', cost: 60 },
-  { label: 'Biopulpectomie + Obturation', cost: 180 },
-  { label: 'Couronne céramo-métallique', cost: 450 },
-  { label: 'Parage canalaire', cost: 90 },
-  { label: 'Consultation', cost: 30 },
-  { label: 'Radiographie', cost: 25 },
-  { label: 'OBC', cost: 0 },
-  { label: 'Polissage', cost: 0 },
-  { label: 'Endo', cost: 0 },
-  { label: 'Mise en forme', cost: 0 },
+  'Détartrage',
+  'Obturation (composite)',
+  'Extraction simple',
+  'Biopulpectomie + Obturation',
+  'Couronne céramo-métallique',
+  'Parage canalaire',
+  'Consultation',
+  'Radiographie',
+  'OBC',
+  'Polissage',
+  'Endo',
+  'Mise en forme',
 ];
 
 const PAYMENT_MODES = [
@@ -197,26 +200,20 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
 
   // Coche/décoche un acte courant pour la ligne `index` : le libellé de la
   // ligne est reconstruit à partir de tous les actes sélectionnés (jointure
-  // " + "), et "Payé" est mis à jour avec la somme des prix par défaut des
-  // actes cochés (on suppose un règlement complet par défaut) ; "Reste"
-  // n'est jamais touché ici, l'utilisateur le saisit lui-même si besoin.
-  const toggleCommonAct = (index: number, qa: { label: string; cost: number }) => {
+  // " + "). Payé et Reste ne sont jamais modifiés ici, l'utilisateur les
+  // saisit toujours lui-même.
+  const toggleCommonAct = (index: number, label: string) => {
     setActs((prev) => {
       const updated = [...prev];
       const row = updated[index];
-      const isSelected = row.selectedCommonActs.includes(qa.label);
+      const isSelected = row.selectedCommonActs.includes(label);
       const newSelected = isSelected
-        ? row.selectedCommonActs.filter((l) => l !== qa.label)
-        : [...row.selectedCommonActs, qa.label];
-      const newMontantRecu = newSelected.reduce((sum, label) => {
-        const found = COMMON_ACTS.find((a) => a.label === label);
-        return sum + (found?.cost || 0);
-      }, 0);
+        ? row.selectedCommonActs.filter((l) => l !== label)
+        : [...row.selectedCommonActs, label];
       updated[index] = {
         ...row,
         selectedCommonActs: newSelected,
         libelle: newSelected.join(' + '),
-        montantRecu: newMontantRecu,
       };
       return updated;
     });
@@ -338,23 +335,20 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                                 💡 Actes courants (sélection multiple)
                               </p>
                               <div className="max-h-48 overflow-y-auto space-y-0.5 mb-3">
-                                {COMMON_ACTS.map((qa) => {
-                                  const checked = act.selectedCommonActs.includes(qa.label);
+                                {COMMON_ACTS.map((label) => {
+                                  const checked = act.selectedCommonActs.includes(label);
                                   return (
                                     <label
-                                      key={qa.label}
+                                      key={label}
                                       className="flex items-center gap-2 text-sm px-1.5 py-1 rounded hover:bg-slate-50 cursor-pointer"
                                     >
                                       <input
                                         type="checkbox"
                                         checked={checked}
-                                        onChange={() => toggleCommonAct(index, qa)}
+                                        onChange={() => toggleCommonAct(index, label)}
                                         className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                                       />
-                                      <span className="flex-1">{qa.label}</span>
-                                      {qa.cost > 0 && (
-                                        <span className="text-xs text-slate-400">{qa.cost} DT</span>
-                                      )}
+                                      <span className="flex-1">{label}</span>
                                     </label>
                                   );
                                 })}
