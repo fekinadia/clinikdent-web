@@ -13,8 +13,11 @@ interface NewTreatmentDialogProps {
 interface TreatmentAct {
   libelle: string;
   dents: string;
-  cout: number;
+  // Payé et Reste sont saisis directement (comme sur la fiche papier) ; le
+  // "coût" total envoyé au backend est recalculé à l'enregistrement comme
+  // montantRecu + reste.
   montantRecu: number;
+  reste: number;
   modeReglement: string;
   // Actes courants (+ actes personnalisés ajoutés via "Autre") sélectionnés
   // pour cette ligne — sert uniquement à piloter le menu déroulant, `libelle`
@@ -49,8 +52,8 @@ const PAYMENT_MODES = [
 const emptyAct = (): TreatmentAct => ({
   libelle: '',
   dents: '',
-  cout: 0,
   montantRecu: 0,
+  reste: 0,
   modeReglement: 'especes',
   selectedCommonActs: [],
 });
@@ -82,9 +85,16 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
     mutationFn: async () => {
       const validActs = acts
         .filter((a) => a.libelle.trim() !== '')
-        // `selectedCommonActs` ne sert qu'à l'UI du sélecteur multiple, on ne
-        // l'envoie pas au backend.
-        .map(({ selectedCommonActs, ...act }) => act);
+        // `selectedCommonActs` ne sert qu'à l'UI du sélecteur multiple ; le
+        // backend attend toujours un `cout` (prix total), reconstitué ici à
+        // partir de Payé + Reste tels que saisis dans le formulaire.
+        .map((a) => ({
+          libelle: a.libelle,
+          dents: a.dents,
+          modeReglement: a.modeReglement,
+          montantRecu: a.montantRecu,
+          cout: Number(a.montantRecu) + Number(a.reste),
+        }));
       if (validActs.length === 0) {
         throw new Error("Ajoutez au moins un acte");
       }
@@ -130,9 +140,9 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
 
   // Coche/décoche un acte courant pour la ligne `index` : le libellé de la
   // ligne est reconstruit à partir de tous les actes sélectionnés (jointure
-  // " + "), et le coût total est recalculé — sauf si le montant reçu avait
-  // déjà été modifié manuellement (montantRecu ≠ cout), auquel cas on le
-  // laisse tel quel pour ne pas écraser une saisie de l'utilisateur.
+  // " + "), et "Payé" est mis à jour avec la somme des prix par défaut des
+  // actes cochés (on suppose un règlement complet par défaut) ; "Reste"
+  // n'est jamais touché ici, l'utilisateur le saisit lui-même si besoin.
   const toggleCommonAct = (index: number, qa: { label: string; cost: number }) => {
     setActs((prev) => {
       const updated = [...prev];
@@ -141,17 +151,15 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
       const newSelected = isSelected
         ? row.selectedCommonActs.filter((l) => l !== qa.label)
         : [...row.selectedCommonActs, qa.label];
-      const newCout = newSelected.reduce((sum, label) => {
+      const newMontantRecu = newSelected.reduce((sum, label) => {
         const found = COMMON_ACTS.find((a) => a.label === label);
         return sum + (found?.cost || 0);
       }, 0);
-      const montantRecuWasSynced = row.montantRecu === row.cout;
       updated[index] = {
         ...row,
         selectedCommonActs: newSelected,
         libelle: newSelected.join(' + '),
-        cout: newCout,
-        montantRecu: montantRecuWasSynced ? newCout : row.montantRecu,
+        montantRecu: newMontantRecu,
       };
       return updated;
     });
@@ -171,9 +179,9 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
     setCustomActDrafts((d) => ({ ...d, [index]: '' }));
   };
 
-  const totalCost = acts.reduce((sum, a) => sum + (Number(a.cout) || 0), 0);
   const totalPaid = acts.reduce((sum, a) => sum + (Number(a.montantRecu) || 0), 0);
-  const totalDue = totalCost - totalPaid;
+  const totalDue = acts.reduce((sum, a) => sum + (Number(a.reste) || 0), 0);
+  const totalCost = totalPaid + totalDue;
 
   if (!isOpen) return null;
 
@@ -227,8 +235,8 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                   <tr className="bg-slate-50 border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                     <th className="px-3 py-2.5">Acte</th>
                     <th className="px-3 py-2.5 w-20">Dent</th>
-                    <th className="px-3 py-2.5 w-24 text-right">Coût</th>
                     <th className="px-3 py-2.5 w-24 text-right">Payé</th>
+                    <th className="px-3 py-2.5 w-24 text-right">Reste</th>
                     <th className="px-3 py-2.5 w-32">Mode</th>
                     <th className="px-3 py-2.5 w-8"></th>
                   </tr>
@@ -329,8 +337,8 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                           type="number"
                           min="0"
                           step="0.5"
-                          value={act.cout || ''}
-                          onChange={(e) => updateAct(index, 'cout', parseFloat(e.target.value) || 0)}
+                          value={act.montantRecu || ''}
+                          onChange={(e) => updateAct(index, 'montantRecu', parseFloat(e.target.value) || 0)}
                           placeholder="0"
                           className="input py-1.5 text-sm w-24 text-right"
                         />
@@ -340,8 +348,8 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                           type="number"
                           min="0"
                           step="0.5"
-                          value={act.montantRecu || ''}
-                          onChange={(e) => updateAct(index, 'montantRecu', parseFloat(e.target.value) || 0)}
+                          value={act.reste || ''}
+                          onChange={(e) => updateAct(index, 'reste', parseFloat(e.target.value) || 0)}
                           placeholder="0"
                           className="input py-1.5 text-sm w-24 text-right"
                         />
