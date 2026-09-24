@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Save, Plus, Trash2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -66,19 +67,75 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
 
   // Popover "actes courants" (sélection multiple) ouvert pour la ligne
   // d'index `openActsMenu`, ou aucun si null. Un seul ouvert à la fois.
+  //
+  // Le popover est rendu via un portail (document.body) en position "fixed",
+  // calculée à partir de la position du bouton qui l'ouvre (`menuPos`). Ça
+  // évite qu'il soit rogné par les conteneurs ancêtres qui scrollent
+  // (le tableau en overflow-x-auto, lui-même dans le corps de la modale en
+  // overflow-y-auto) — c'était la cause de l'affichage cassé sur PC et
+  // téléphone (popover coupé / chevauchant les autres champs).
   const [openActsMenu, setOpenActsMenu] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ left: number; width: number; top?: number; bottom?: number } | null>(
+    null,
+  );
   const [customActDrafts, setCustomActDrafts] = useState<Record<number, string>>({});
-  const menuContainerRef = useRef<HTMLTableCellElement | null>(null);
+  const triggerRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const bodyScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const openMenuForRow = (index: number) => {
+    const btn = triggerRefs.current[index];
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const width = Math.min(288, window.innerWidth - 16);
+    let left = rect.left;
+    if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8;
+    if (left < 8) left = 8;
+    const estimatedHeight = 300;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placeAbove = spaceBelow < estimatedHeight && rect.top > spaceBelow;
+    setMenuPos(
+      placeAbove
+        ? { left, width, bottom: window.innerHeight - rect.top + 4 }
+        : { left, width, top: rect.bottom + 4 },
+    );
+    setOpenActsMenu(index);
+  };
+
+  const closeMenu = () => {
+    setOpenActsMenu(null);
+    setMenuPos(null);
+  };
 
   useEffect(() => {
     if (openActsMenu === null) return;
     function handleClickOutside(e: MouseEvent) {
-      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target as Node)) {
-        setOpenActsMenu(null);
+      const target = e.target as Node;
+      const trigger = triggerRefs.current[openActsMenu as number];
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        !(trigger && trigger.contains(target))
+      ) {
+        closeMenu();
       }
     }
+    // Le popover est positionné une fois à l'ouverture ; s'il n'est pas
+    // recalculé sur un scroll/resize il se retrouverait décalé par rapport
+    // au bouton, donc on le referme plutôt que d'afficher un popover mal
+    // placé.
+    function handleScrollOrResize() {
+      closeMenu();
+    }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleScrollOrResize);
+    const scrollEl = bodyScrollRef.current;
+    scrollEl?.addEventListener('scroll', handleScrollOrResize);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleScrollOrResize);
+      scrollEl?.removeEventListener('scroll', handleScrollOrResize);
+    };
   }, [openActsMenu]);
 
   const createTreatment = useMutation({
@@ -123,13 +180,13 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
 
   const addAct = () => {
     setActs([...acts, emptyAct()]);
-    setOpenActsMenu(null);
+    closeMenu();
   };
 
   const removeAct = (index: number) => {
     if (acts.length === 1) return;
     setActs(acts.filter((_, i) => i !== index));
-    setOpenActsMenu(null);
+    closeMenu();
   };
 
   const updateAct = (index: number, field: keyof TreatmentAct, value: string | number) => {
@@ -200,7 +257,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div ref={bodyScrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
               Date du soin
@@ -244,13 +301,13 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                 <tbody>
                   {acts.map((act, index) => (
                     <tr key={index} className="border-b border-slate-100 last:border-0">
-                      <td
-                        className="px-3 py-2 relative"
-                        ref={openActsMenu === index ? menuContainerRef : undefined}
-                      >
+                      <td className="px-3 py-2 relative">
                         <button
                           type="button"
-                          onClick={() => setOpenActsMenu(openActsMenu === index ? null : index)}
+                          ref={(el) => {
+                            triggerRefs.current[index] = el;
+                          }}
+                          onClick={() => (openActsMenu === index ? closeMenu() : openMenuForRow(index))}
                           className="input py-1.5 text-sm w-full text-left flex items-center justify-between gap-2 bg-white"
                         >
                           <span
@@ -262,66 +319,80 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                           <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
                         </button>
 
-                        {openActsMenu === index && (
-                          <div className="absolute z-20 top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg p-3">
-                            <p className="text-xs text-slate-500 mb-2">
-                              💡 Actes courants (sélection multiple)
-                            </p>
-                            <div className="max-h-48 overflow-y-auto space-y-0.5 mb-3">
-                              {COMMON_ACTS.map((qa) => {
-                                const checked = act.selectedCommonActs.includes(qa.label);
-                                return (
-                                  <label
-                                    key={qa.label}
-                                    className="flex items-center gap-2 text-sm px-1.5 py-1 rounded hover:bg-slate-50 cursor-pointer"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() => toggleCommonAct(index, qa)}
-                                      className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                                    />
-                                    <span className="flex-1">{qa.label}</span>
-                                    {qa.cost > 0 && (
-                                      <span className="text-xs text-slate-400">{qa.cost} DT</span>
-                                    )}
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
-                              <input
-                                type="text"
-                                value={customActDrafts[index] || ''}
-                                onChange={(e) =>
-                                  setCustomActDrafts((d) => ({ ...d, [index]: e.target.value }))
-                                }
-                                placeholder="Autre acte..."
-                                className="input py-1 text-xs flex-1"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    addCustomAct(index);
+                        {openActsMenu === index &&
+                          menuPos &&
+                          createPortal(
+                            <div
+                              ref={popoverRef}
+                              className="fixed z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-3"
+                              style={{
+                                left: menuPos.left,
+                                width: menuPos.width,
+                                top: menuPos.top,
+                                bottom: menuPos.bottom,
+                                maxHeight: '70vh',
+                                overflowY: 'auto',
+                              }}
+                            >
+                              <p className="text-xs text-slate-500 mb-2">
+                                💡 Actes courants (sélection multiple)
+                              </p>
+                              <div className="max-h-48 overflow-y-auto space-y-0.5 mb-3">
+                                {COMMON_ACTS.map((qa) => {
+                                  const checked = act.selectedCommonActs.includes(qa.label);
+                                  return (
+                                    <label
+                                      key={qa.label}
+                                      className="flex items-center gap-2 text-sm px-1.5 py-1 rounded hover:bg-slate-50 cursor-pointer"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleCommonAct(index, qa)}
+                                        className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                      />
+                                      <span className="flex-1">{qa.label}</span>
+                                      {qa.cost > 0 && (
+                                        <span className="text-xs text-slate-400">{qa.cost} DT</span>
+                                      )}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                                <input
+                                  type="text"
+                                  value={customActDrafts[index] || ''}
+                                  onChange={(e) =>
+                                    setCustomActDrafts((d) => ({ ...d, [index]: e.target.value }))
                                   }
-                                }}
-                              />
+                                  placeholder="Autre acte..."
+                                  className="input py-1 text-xs flex-1"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      addCustomAct(index);
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => addCustomAct(index)}
+                                  className="text-xs px-2 py-1.5 rounded bg-primary-50 text-primary-700 font-medium hover:bg-primary-100 whitespace-nowrap"
+                                >
+                                  Ajouter
+                                </button>
+                              </div>
                               <button
                                 type="button"
-                                onClick={() => addCustomAct(index)}
-                                className="text-xs px-2 py-1.5 rounded bg-primary-50 text-primary-700 font-medium hover:bg-primary-100 whitespace-nowrap"
+                                onClick={closeMenu}
+                                className="w-full text-center text-xs text-slate-400 hover:text-slate-600 mt-2 pt-2 border-t border-slate-100"
                               >
-                                Ajouter
+                                Fermer
                               </button>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setOpenActsMenu(null)}
-                              className="w-full text-center text-xs text-slate-400 hover:text-slate-600 mt-2 pt-2 border-t border-slate-100"
-                            >
-                              Fermer
-                            </button>
-                          </div>
-                        )}
+                            </div>,
+                            document.body,
+                          )}
                       </td>
                       <td className="px-3 py-2">
                         <input
@@ -384,6 +455,9 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                 </tbody>
               </table>
             </div>
+            <p className="sm:hidden text-xs text-slate-400 mt-1.5 text-center">
+              ← Faites glisser le tableau pour voir Payé / Reste / Mode →
+            </p>
           </div>
 
           <div>
