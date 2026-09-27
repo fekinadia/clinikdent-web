@@ -259,6 +259,8 @@ export function AgendaPage() {
 const STATUT_INFO: Record<string, { label: string; dot: string }> = {
   planifie: { label: 'Planifié', dot: '#94a3b8' },
   confirme: { label: 'Confirmé', dot: '#0e6ba8' },
+  // Salle d'attente (2026-09-26) : patient arrivé, en attente d'être reçu.
+  arrive: { label: 'En salle d\'attente', dot: '#7c3aed' },
   en_cours: { label: 'En cours', dot: '#d97706' },
   termine: { label: 'Terminé', dot: '#16a34a' },
   annule: { label: 'Annulé', dot: '#e11d48' },

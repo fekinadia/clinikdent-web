@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Calendar, TrendingUp, AlertCircle, ArrowRight, Wallet, ChevronRight } from 'lucide-react';
+import { Users, Calendar, TrendingUp, Armchair, ArrowRight, Wallet, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { patientsApi, appointmentsApi } from '@/api/endpoints';
 import { Avatar } from '@/components/ui/Avatar';
@@ -10,6 +10,7 @@ import { formatTime } from '@/lib/utils';
 const STATUT_STYLE: Record<string, { border: string; bg: string; text: string; label: string }> = {
   planifie: { border: '#94a3b8', bg: '#94a3b81a', text: '#475569', label: 'Planifié' },
   confirme: { border: '#0e6ba8', bg: '#0e6ba81a', text: '#0e6ba8', label: 'Confirmé' },
+  arrive: { border: '#7c3aed', bg: '#7c3aed1a', text: '#6d28d9', label: 'En salle' },
   en_cours: { border: '#d97706', bg: '#d977061a', text: '#b45309', label: 'En cours' },
   termine: { border: '#16a34a', bg: '#16a34a1a', text: '#15803d', label: 'Terminé' },
   annule: { border: '#e11d48', bg: '#e11d481a', text: '#be123c', label: 'Annulé' },
@@ -62,12 +63,16 @@ export function DashboardPage() {
             icon={<TrendingUp size={20} />}
             tint="#d97706"
           />
-          <StatCard
-            label="Alertes"
-            value="0"
-            icon={<AlertCircle size={20} />}
-            tint="#e11d48"
-          />
+          {/* Remplace l'ancienne carte « Alertes » (valeur figée à 0) par le
+              nombre réel de patients en salle d'attente (2026-09-26). */}
+          <Link to="/salle-attente" className="block">
+            <StatCard
+              label="En salle d'attente"
+              value={todayAppts ? todayAppts.filter((a) => a.statut === 'arrive').length : '—'}
+              icon={<Armchair size={20} />}
+              tint="#7c3aed"
+            />
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -133,6 +138,7 @@ export function DashboardPage() {
             <div className="space-y-1">
               <ShortcutLink to="/patients" icon={Users} label="Liste des patients" tint="#0e6ba8" />
               <ShortcutLink to="/agenda" icon={Calendar} label="Planning de la semaine" tint="#2dd4bf" />
+              <ShortcutLink to="/salle-attente" icon={Armchair} label="Salle d'attente" tint="#7c3aed" />
               <ShortcutLink to="/finance" icon={Wallet} label="Facturation" tint="#d97706" />
             </div>
           </div>
