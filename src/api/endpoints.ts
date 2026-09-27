@@ -195,6 +195,7 @@ export const patientImagesApi = {
     patientId: number,
     file: File,
     data: { type: string; titre?: string; observation?: string; datePrise?: string },
+    onProgress?: (percent: number) => void,
   ) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -205,6 +206,9 @@ export const patientImagesApi = {
     return api
       .post<PatientImage>(`/patients/${patientId}/images`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+        },
       })
       .then((r) => r.data);
   },
