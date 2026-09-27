@@ -4,6 +4,7 @@ import { Plus, Image as ImageIcon, FileText, Trash2, X, Upload } from 'lucide-re
 import toast from 'react-hot-toast';
 import { patientImagesApi, PatientImage } from '../api/endpoints';
 import { formatDate } from '../lib/utils';
+import { compressImage } from '../lib/compressImage';
 
 interface PatientImagesTabProps {
   patientId: number;
@@ -148,14 +149,34 @@ function UploadImageDialog({
   const [titre, setTitre] = useState('');
   const [observation, setObservation] = useState('');
   const [datePrise, setDatePrise] = useState('');
+  // Progression affichée sur le bouton (2026-09-27) : l'envoi depuis un
+  // téléphone donnait l'impression d'un écran figé sur « Envoi... ».
+  const [progress, setProgress] = useState<string | null>(null);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
       if (files.length === 0) throw new Error('Aucun fichier sélectionné');
-      const results = await Promise.allSettled(
-        files.map((f) => patientImagesApi.upload(patientId, f, { type, titre, observation, datePrise })),
-      );
-      const failed = results.filter((r) => r.status === 'rejected').length;
+      // Envoi un par un : sur mobile la bande passante est partagée de toute
+      // façon, et ça permet d'afficher une progression lisible.
+      let failed = 0;
+      for (let i = 0; i < files.length; i++) {
+        const prefix = files.length > 1 ? `${i + 1}/${files.length} · ` : '';
+        try {
+          setProgress(`${prefix}Préparation...`);
+          const toSend = await compressImage(files[i], type);
+          setProgress(`${prefix}Envoi 0 %`);
+          await patientImagesApi.upload(
+            patientId,
+            toSend,
+            { type, titre, observation, datePrise },
+            (p) => setProgress(`${prefix}Envoi ${p} %`),
+          );
+        } catch {
+          failed++;
+        }
+      }
+      setProgress(null);
+      if (failed === files.length) throw new Error("Échec de l'envoi");
       return { total: files.length, failed };
     },
     onSuccess: ({ total, failed }: { total: number; failed: number }) => {
@@ -168,6 +189,7 @@ function UploadImageDialog({
       onClose();
     },
     onError: (err: any) => {
+      setProgress(null);
       toast.error(err?.response?.data?.message || "Erreur lors de l'envoi du fichier");
     },
   });
@@ -258,7 +280,7 @@ function UploadImageDialog({
             className="btn-primary !rounded-full !px-5 !py-2.5"
           >
             {uploadMutation.isPending
-              ? 'Envoi...'
+              ? progress || 'Envoi...'
               : files.length > 1
                 ? `Envoyer (${files.length})`
                 : 'Envoyer'}
