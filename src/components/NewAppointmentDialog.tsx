@@ -35,6 +35,7 @@ const HOURS = Array.from({ length: 22 }, (_, i) => {
 const STATUT_OPTIONS: { value: Appointment['statut']; label: string }[] = [
   { value: 'planifie', label: 'Planifié' },
   { value: 'confirme', label: 'Confirmé' },
+  { value: 'arrive', label: "En salle d'attente" },
   { value: 'en_cours', label: 'En cours' },
   { value: 'termine', label: 'Terminé' },
   { value: 'annule', label: 'Annulé' },

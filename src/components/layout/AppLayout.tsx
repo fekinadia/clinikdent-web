@@ -26,6 +26,7 @@ import {
   ChevronRight,
   BookOpen,
   KeyRound,
+  Armchair,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
@@ -72,6 +73,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
       { to: '/patients', icon: Users, label: 'Patients' },
       { to: '/agenda', icon: Calendar, label: 'Agenda' },
+      { to: '/salle-attente', icon: Armchair, label: "Salle d'attente" },
       { to: '/recalls', icon: BellRing, label: 'Patients à réactiver' },
     ],
   },

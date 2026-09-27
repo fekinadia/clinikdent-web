@@ -72,10 +72,14 @@ export interface Appointment {
   typeId?: number;
   dateDebut: string;
   dateFin: string;
-  statut: 'planifie' | 'confirme' | 'en_cours' | 'termine' | 'annule' | 'absent';
+  statut: 'planifie' | 'confirme' | 'arrive' | 'en_cours' | 'termine' | 'annule' | 'absent';
   observation?: string;
+  // Salle d'attente (2026-09-26) : posés automatiquement par le backend.
+  heureArrivee?: string | null;
+  heureEntree?: string | null;
   patient?: Pick<Patient, 'id' | 'nom' | 'prenom' | 'gsm'>;
   type?: AppointmentType;
+  medecin?: { id: number; nom: string; prenom: string } | null;
 }
 
 // Bloc d'agenda libre (pause, réunion, blocage de créneau...) sans lien avec
