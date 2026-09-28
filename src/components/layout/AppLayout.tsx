@@ -27,6 +27,7 @@ import {
   BookOpen,
   KeyRound,
   Armchair,
+  Banknote,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
@@ -83,6 +84,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { to: '/treatments', icon: Activity, label: 'Soins' },
       { to: '/prescriptions', icon: FileText, label: 'Ordonnances' },
       { to: '/documents', icon: FileText, label: 'Documents' },
+      { to: '/caisse', icon: Banknote, label: 'Caisse & chèques' },
       { to: '/finance', icon: Wallet, label: 'Facturation' },
       { to: '/expenses', icon: Receipt, label: 'Dépenses' },
       { to: '/stats', icon: BarChart3, label: 'Statistiques' },
