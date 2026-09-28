@@ -293,6 +293,10 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                               />
                             </td>
                             <td className="px-4 py-2 align-top">
+                              {/* Libellé explicite (2026-09-28) : cette colonne s'appelle "Payé"
+                                  dans l'en-tête mais édite montantRecu — sans rappel ici, facile
+                                  à confondre avec le prix total juste à côté. */}
+                              <span className="block text-[10px] text-slate-400 mb-0.5">Encaissé</span>
                               <input
                                 type="number"
                                 min="0"
@@ -316,6 +320,13 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                               />
                             </td>
                             <td className="px-4 py-2 align-top">
+                              {/* Libellé explicite (2026-09-28) : l'en-tête de colonne dit
+                                  "Reste" mais ce champ édite en réalité le PRIX TOTAL (cout),
+                                  pas le reste dû (qui est recalculé automatiquement). Sans ce
+                                  rappel visuel, on tape ici en pensant corriger le reste dû et
+                                  on change le prix à la place — source de confusion constatée
+                                  en test (2026-09-28). */}
+                              <span className="block text-[10px] text-slate-400 mb-0.5">Prix total</span>
                               <input
                                 type="number"
                                 min="0"
