@@ -43,6 +43,7 @@ const COMMON_ACTS = [
   'Polissage',
   'Endo',
   'Mise en forme',
+  'Eugénate',
 ];
 
 const PAYMENT_MODES = [
