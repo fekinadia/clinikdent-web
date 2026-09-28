@@ -21,6 +21,7 @@ const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default:
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const PatientsListPage = lazy(() => import('@/pages/PatientsListPage').then((m) => ({ default: m.PatientsListPage })));
 const PatientDetailPage = lazy(() => import('@/pages/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })));
+const CaissePage = lazy(() => import('@/pages/CaissePage').then((m) => ({ default: m.CaissePage })));
 const WaitingRoomPage = lazy(() => import('@/pages/WaitingRoomPage').then((m) => ({ default: m.WaitingRoomPage })));
 const AgendaPage = lazy(() => import('@/pages/AgendaPage').then((m) => ({ default: m.AgendaPage })));
 const GuidePage = lazy(() => import('@/pages/GuidePage').then((m) => ({ default: m.GuidePage })));
@@ -85,6 +86,7 @@ export function App() {
               <Route path="patients/:id" element={<PatientDetailPage />} />
               <Route path="agenda" element={<AgendaPage />} />
               <Route path="salle-attente" element={<WaitingRoomPage />} />
+              <Route path="caisse" element={<CaissePage />} />
               <Route path="guide" element={<GuidePage />} />
               <Route path="recalls" element={<RecallsPage />} />
               <Route path="automatisation" element={<AutomationOverviewPage />} />
