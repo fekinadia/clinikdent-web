@@ -23,6 +23,11 @@ export function RecordPaymentDialog({ patientId, act, onClose }: RecordPaymentDi
   const reste = Number(act.cout) - Number(act.montantRecu) - Number(act.remise || 0);
   const [montant, setMontant] = useState(reste > 0 ? reste.toFixed(2) : '');
   const [modeReglement, setModeReglement] = useState('especes');
+  // Caisse & chèques (2026-09-27) : infos du chèque, envoyées seulement si mode = chèque.
+  const [numeroCheque, setNumeroCheque] = useState('');
+  const [banque, setBanque] = useState('');
+  const [dateEcheance, setDateEcheance] = useState('');
+  const isCheque = modeReglement === 'cheque';
 
   const recordPayment = useMutation({
     mutationFn: async () => {
@@ -31,12 +36,24 @@ export function RecordPaymentDialog({ patientId, act, onClose }: RecordPaymentDi
       if (value > reste + 0.01) {
         throw new Error(`Le montant dépasse le solde dû (${reste.toFixed(2)} DT)`);
       }
-      return treatmentsApi.recordPayment(act.id, { montant: value, modeReglement });
+      return treatmentsApi.recordPayment(act.id, {
+        montant: value,
+        modeReglement,
+        ...(isCheque
+          ? {
+              numeroCheque: numeroCheque.trim() || undefined,
+              banque: banque.trim() || undefined,
+              dateEcheance: dateEcheance || undefined,
+            }
+          : {}),
+      });
     },
     onSuccess: () => {
       toast.success('Paiement enregistré');
       queryClient.invalidateQueries({ queryKey: ['treatments', patientId] });
       queryClient.invalidateQueries({ queryKey: ['finSummary', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['caisse'] });
+      queryClient.invalidateQueries({ queryKey: ['cheques'] });
       onClose();
     },
     onError: (error: any) => {
@@ -79,6 +96,34 @@ export function RecordPaymentDialog({ patientId, act, onClose }: RecordPaymentDi
               ))}
             </select>
           </div>
+          {isCheque && (
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">N° de chèque</label>
+                  <input
+                    value={numeroCheque} onChange={(e) => setNumeroCheque(e.target.value)} maxLength={50}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">Banque</label>
+                  <input
+                    value={banque} onChange={(e) => setBanque(e.target.value)} maxLength={100} placeholder="BIAT, STB…"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 mb-1">Date d'échéance (si chèque post-daté)</label>
+                <input
+                  type="date" value={dateEcheance} onChange={(e) => setDateEcheance(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500">Le chèque apparaîtra dans « Caisse &amp; chèques » jusqu'à ce qu'il soit marqué encaissé.</p>
+            </div>
+          )}
         </div>
         <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3">
           <button onClick={onClose} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">
