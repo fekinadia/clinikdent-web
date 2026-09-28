@@ -132,7 +132,15 @@ export const treatmentsApi = {
 
   recordPayment: (
     actId: number,
-    data: { montant: number; modeReglement?: string; remarque?: string },
+    data: {
+      montant: number;
+      modeReglement?: string;
+      remarque?: string;
+      // Caisse & chèques (2026-09-27) : pris en compte si modeReglement = 'cheque'
+      numeroCheque?: string;
+      banque?: string;
+      dateEcheance?: string;
+    },
   ) =>
     api.patch(`/treatments/acts/${actId}/payment`, data).then((r) => r.data),
 };
@@ -479,6 +487,59 @@ export const financeApi = {
   listUnpaid: () => api.get<UnpaidPatient[]>('/finance/unpaid').then((r) => r.data),
   listPayments: (params?: { from?: string; to?: string; patientId?: number }) =>
     api.get<FinancePayment[]>('/finance/payments', { params }).then((r) => r.data),
+};
+
+// ===== CAISSE & CHÈQUES (2026-09-27) =====
+export interface CaissePaiement {
+  id: number;
+  heure: string;
+  montant: number;
+  modeReglement: string;
+  numeroCheque: string | null;
+  banque: string | null;
+  dateEcheance: string | null;
+  dateEncaissement: string | null;
+  acte: string | null;
+  patientId: number;
+  nomPatient: string;
+  prenomPatient: string;
+  numeroDossier: string;
+  encaissePar: string | null;
+}
+
+export interface CaisseJour {
+  date: string;
+  total: number;
+  nombre: number;
+  parMode: Record<string, number>;
+  paiements: CaissePaiement[];
+}
+
+export interface Cheque {
+  id: number;
+  montant: number;
+  numeroCheque: string | null;
+  banque: string | null;
+  dateEcheance: string | null;
+  dateEncaissement: string | null;
+  datePaiement: string;
+  patientId: number;
+  nomPatient: string;
+  prenomPatient: string;
+  numeroDossier: string;
+}
+
+export type ChequeStatut = 'en_attente' | 'encaisse' | 'tous';
+
+export const caisseApi = {
+  jour: (date: string) =>
+    api.get<CaisseJour>('/finance/caisse', { params: { date } }).then((r) => r.data),
+  cheques: (statut: ChequeStatut) =>
+    api
+      .get<{ total: number; totalEnAttente: number; cheques: Cheque[] }>('/finance/cheques', { params: { statut } })
+      .then((r) => r.data),
+  setEncaisse: (id: number, encaisse: boolean, dateEncaissement?: string) =>
+    api.patch(`/finance/cheques/${id}`, { encaisse, dateEncaissement }).then((r) => r.data),
 };
 
 // ===== ADMIN (comptes démo et clients) =====
