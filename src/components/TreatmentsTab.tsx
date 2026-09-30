@@ -11,6 +11,16 @@ interface TreatmentsTabProps {
   patientId: number;
 }
 
+// Un paiement encaissé sur cet acte (bouton "Encaisser" ou saisi à la
+// création du soin) — chacun a sa propre date (datePaiement), distincte de
+// la date du soin (2026-09-30).
+interface ActPayment {
+  id: number;
+  montant: number;
+  datePaiement: string;
+  modeReglement: string;
+}
+
 interface TreatmentAct {
   id: number;
   libelle: string;
@@ -19,6 +29,7 @@ interface TreatmentAct {
   montantRecu: number;
   remise?: number;
   modeReglement?: string;
+  payments?: ActPayment[];
 }
 
 interface Treatment {
@@ -216,6 +227,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                 <th className="px-4 py-2.5 whitespace-nowrap">Date</th>
                 <th className="px-4 py-2.5 whitespace-nowrap">Dent</th>
                 <th className="px-4 py-2.5">Acte</th>
+                <th className="px-4 py-2.5 text-right whitespace-nowrap">Total</th>
                 <th className="px-4 py-2.5 text-right whitespace-nowrap">Payé</th>
                 <th className="px-4 py-2.5 text-right whitespace-nowrap">Reste</th>
                 <th className="px-4 py-2.5 w-28"></th>
@@ -293,9 +305,30 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                               />
                             </td>
                             <td className="px-4 py-2 align-top">
-                              {/* Libellé explicite (2026-09-28) : cette colonne s'appelle "Payé"
-                                  dans l'en-tête mais édite montantRecu — sans rappel ici, facile
-                                  à confondre avec le prix total juste à côté. */}
+                              <span className="block text-[10px] text-slate-400 mb-0.5">Prix total</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={editingAct.cout}
+                                onChange={(e) =>
+                                  setEditForm((f) =>
+                                    f
+                                      ? {
+                                          ...f,
+                                          acts: f.acts.map((a) =>
+                                            a.id === act.id ? { ...a, cout: e.target.value } : a,
+                                          ),
+                                        }
+                                      : f,
+                                  )
+                                }
+                                className="input text-sm text-right w-20"
+                                placeholder="Total"
+                                title="Prix total de l'acte (DT)"
+                              />
+                            </td>
+                            <td className="px-4 py-2 align-top">
                               <span className="block text-[10px] text-slate-400 mb-0.5">Encaissé</span>
                               <input
                                 type="number"
@@ -319,35 +352,18 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                                 title="Montant encaissé (DT)"
                               />
                             </td>
-                            <td className="px-4 py-2 align-top">
-                              {/* Libellé explicite (2026-09-28) : l'en-tête de colonne dit
-                                  "Reste" mais ce champ édite en réalité le PRIX TOTAL (cout),
-                                  pas le reste dû (qui est recalculé automatiquement). Sans ce
-                                  rappel visuel, on tape ici en pensant corriger le reste dû et
-                                  on change le prix à la place — source de confusion constatée
-                                  en test (2026-09-28). */}
-                              <span className="block text-[10px] text-slate-400 mb-0.5">Prix total</span>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={editingAct.cout}
-                                onChange={(e) =>
-                                  setEditForm((f) =>
-                                    f
-                                      ? {
-                                          ...f,
-                                          acts: f.acts.map((a) =>
-                                            a.id === act.id ? { ...a, cout: e.target.value } : a,
-                                          ),
-                                        }
-                                      : f,
-                                  )
-                                }
-                                className="input text-sm text-right w-20"
-                                placeholder="Prix"
-                                title="Prix total de l'acte (DT) — le Reste est recalculé automatiquement"
-                              />
+                            <td className="px-4 py-2 align-top text-right text-slate-400 text-sm">
+                              {/* Reste = Total - Payé, recalculé automatiquement — non modifiable
+                                  directement ici (2026-09-30 : Total a maintenant sa propre
+                                  colonne, donc plus besoin de le détourner pour ça). */}
+                              {(() => {
+                                const c = parseFloat(editingAct.cout);
+                                const m = parseFloat(editingAct.montantRecu);
+                                const coutFinal = Number.isNaN(c) ? Number(act.cout) : c;
+                                const recuFinal = Number.isNaN(m) ? Number(act.montantRecu) : m;
+                                const r = Math.max(0, coutFinal - recuFinal - Number(act.remise || 0));
+                                return r > 0.01 ? r.toFixed(2) : '—';
+                              })()}
                             </td>
                             <td className="px-4 py-2 align-top"></td>
                           </tr>
@@ -372,6 +388,9 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                                   : act.modeReglement})
                               </span>
                             )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-medium text-slate-700 whitespace-nowrap">
+                            {Number(act.cout).toFixed(2)}
                           </td>
                           <td className="px-4 py-2.5 text-right font-medium text-emerald-600 whitespace-nowrap">
                             {Number(act.montantRecu).toFixed(2)}
@@ -408,9 +427,46 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                       );
                     })}
 
+                    {/* Encaissements enregistrés après la création du soin (bouton
+                        "Encaisser" sur un reste dû) : une ligne par paiement, avec sa
+                        propre date — distincte de la date du soin ci-dessus, pour bien
+                        montrer quand l'argent a réellement été reçu (2026-09-30). Le
+                        tout premier paiement d'un acte (généralement saisi le jour même
+                        du soin) n'est pas répété ici pour ne pas doubler la ligne. */}
+                    {!isEditing &&
+                      treatment.acts.flatMap((act) =>
+                        (act.payments || []).slice(1).map((p) => (
+                          <tr key={`pay-${p.id}`} className="border-b border-slate-100 last:border-0 bg-emerald-50/30">
+                            <td className="px-4 py-1.5 whitespace-nowrap text-slate-400 text-xs">
+                              {format(new Date(p.datePaiement), 'dd/MM/yy')}
+                            </td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5 text-slate-500 text-xs italic">
+                              ↳ Encaissement — {act.libelle}
+                              {p.modeReglement && (
+                                <span className="ml-2 text-slate-400">
+                                  ({p.modeReglement === 'especes' ? 'Espèces'
+                                    : p.modeReglement === 'cheque' ? 'Chèque'
+                                    : p.modeReglement === 'd17' ? 'D17'
+                                    : p.modeReglement === 'virement' ? 'Virement'
+                                    : p.modeReglement === 'cnam' ? 'CNAM'
+                                    : p.modeReglement})
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5 text-right font-medium text-emerald-600 text-xs whitespace-nowrap">
+                              {Number(p.montant).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5"></td>
+                          </tr>
+                        )),
+                      )}
+
                     {isEditing && (
                       <tr className="border-b border-slate-200 bg-primary-50/30">
-                        <td colSpan={6} className="px-4 py-3">
+                        <td colSpan={7} className="px-4 py-3">
                           <label className="label">Observations</label>
                           <textarea
                             value={editForm?.observations || ''}
@@ -454,7 +510,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
 
                     {!isEditing && treatment.observations && (
                       <tr className="border-b border-slate-100 last:border-0">
-                        <td colSpan={6} className="px-4 py-1.5 text-xs text-slate-500 italic bg-slate-50/50">
+                        <td colSpan={7} className="px-4 py-1.5 text-xs text-slate-500 italic bg-slate-50/50">
                           {treatment.observations}
                         </td>
                       </tr>
