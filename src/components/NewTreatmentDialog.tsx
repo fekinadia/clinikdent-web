@@ -316,6 +316,13 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                           </span>
                           <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
                         </button>
+                        {act.selectedCommonActs.length > 1 && (
+                          <p className="text-[11px] text-amber-600 mt-1 leading-snug">
+                            ⚠️ {act.selectedCommonActs.length} actes sur cette ligne partagent le
+                            même Payé/Reste. Si leurs prix sont différents, utilisez plutôt une
+                            ligne séparée par acte ("Ajouter une ligne").
+                          </p>
+                        )}
 
                         {openActsMenu === index &&
                           menuPos &&
@@ -335,6 +342,13 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                               <p className="text-xs text-slate-500 mb-2">
                                 💡 Actes courants (sélection multiple)
                               </p>
+                              {act.selectedCommonActs.length >= 1 && (
+                                <p className="text-[11px] text-amber-600 mb-2 leading-snug">
+                                  ⚠️ Cocher plusieurs actes ici les combine en une seule ligne avec
+                                  un seul Payé/Reste. Pour des actes à prix différents, préférez
+                                  une ligne par acte.
+                                </p>
+                              )}
                               <div className="max-h-48 overflow-y-auto space-y-0.5 mb-3">
                                 {COMMON_ACTS.map((label) => {
                                   const checked = act.selectedCommonActs.includes(label);
