@@ -14,10 +14,12 @@ interface NewTreatmentDialogProps {
 interface TreatmentAct {
   libelle: string;
   dents: string;
-  // Payé et Reste sont saisis directement (comme sur la fiche papier) ; le
-  // "coût" total envoyé au backend est recalculé à l'enregistrement comme
-  // montantRecu + reste.
+  // Payé, Total et Reste sont tous les trois modifiables (choix de Nadia,
+  // 2026-09-30) : modifier l'un des trois recalcule automatiquement l'un
+  // des deux autres pour rester cohérent (voir updateActAmount ci-dessous),
+  // plutôt que de forcer un seul champ "maître". `cout` = Total.
   montantRecu: number;
+  cout: number;
   reste: number;
   modeReglement: string;
   // Actes courants (+ actes personnalisés ajoutés via "Autre") sélectionnés
@@ -27,7 +29,7 @@ interface TreatmentAct {
   selectedCommonActs: string[];
 }
 
-// Pas de prix par défaut : Payé/Reste sont toujours saisis à la main par
+// Pas de prix par défaut : Payé/Total sont toujours saisis à la main par
 // l'utilisateur (les tarifs varient trop d'un patient à l'autre pour être
 // devinés automatiquement).
 const COMMON_ACTS = [
@@ -58,6 +60,7 @@ const emptyAct = (): TreatmentAct => ({
   libelle: '',
   dents: '',
   montantRecu: 0,
+  cout: 0,
   reste: 0,
   modeReglement: 'especes',
   selectedCommonActs: [],
@@ -146,15 +149,13 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
     mutationFn: async () => {
       const validActs = acts
         .filter((a) => a.libelle.trim() !== '')
-        // `selectedCommonActs` ne sert qu'à l'UI du sélecteur multiple ; le
-        // backend attend toujours un `cout` (prix total), reconstitué ici à
-        // partir de Payé + Reste tels que saisis dans le formulaire.
+        // `selectedCommonActs` ne sert qu'à l'UI du sélecteur multiple.
         .map((a) => ({
           libelle: a.libelle,
           dents: a.dents,
           modeReglement: a.modeReglement,
           montantRecu: a.montantRecu,
-          cout: Number(a.montantRecu) + Number(a.reste),
+          cout: Number(a.cout),
         }));
       if (validActs.length === 0) {
         throw new Error("Ajoutez au moins un acte");
@@ -199,6 +200,29 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
     setActs(newActs);
   };
 
+  // Payé, Total et Reste sont tous les trois modifiables (demande de
+  // Nadia, 2026-09-30) : Total = Payé + Reste doit toujours rester vrai,
+  // donc modifier l'un des trois recalcule automatiquement l'un des deux
+  // autres plutôt que de forcer un seul champ "maître" à saisir.
+  //   - Payé change  → Reste = Total - Payé (Total ne bouge pas)
+  //   - Total change → Reste = Total - Payé (Payé ne bouge pas)
+  //   - Reste change → Total = Payé + Reste (Payé ne bouge pas)
+  const updateActAmount = (index: number, field: 'montantRecu' | 'cout' | 'reste', value: number) => {
+    setActs((prev) => {
+      const updated = [...prev];
+      const row = { ...updated[index], [field]: value };
+      if (field === 'montantRecu') {
+        row.reste = Number(row.cout) - value;
+      } else if (field === 'cout') {
+        row.reste = value - Number(row.montantRecu);
+      } else {
+        row.cout = Number(row.montantRecu) + value;
+      }
+      updated[index] = row;
+      return updated;
+    });
+  };
+
   // Coche/décoche un acte courant pour la ligne `index` : le libellé de la
   // ligne est reconstruit à partir de tous les actes sélectionnés (jointure
   // " + "). Payé et Reste ne sont jamais modifiés ici, l'utilisateur les
@@ -235,8 +259,8 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   };
 
   const totalPaid = acts.reduce((sum, a) => sum + (Number(a.montantRecu) || 0), 0);
-  const totalDue = acts.reduce((sum, a) => sum + (Number(a.reste) || 0), 0);
-  const totalCost = totalPaid + totalDue;
+  const totalCost = acts.reduce((sum, a) => sum + (Number(a.cout) || 0), 0);
+  const totalDue = totalCost - totalPaid;
 
   if (!isOpen) return null;
 
@@ -291,6 +315,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                     <th className="px-3 py-2.5">Acte</th>
                     <th className="px-3 py-2.5 w-20">Dent</th>
                     <th className="px-3 py-2.5 w-24 text-right">Payé</th>
+                    <th className="px-3 py-2.5 w-24 text-right">Total</th>
                     <th className="px-3 py-2.5 w-24 text-right">Reste</th>
                     <th className="px-3 py-2.5 w-32">Mode</th>
                     <th className="px-3 py-2.5 w-8"></th>
@@ -319,7 +344,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                         {act.selectedCommonActs.length > 1 && (
                           <p className="text-[11px] text-amber-600 mt-1 leading-snug">
                             ⚠️ {act.selectedCommonActs.length} actes sur cette ligne partagent le
-                            même Payé/Reste. Si leurs prix sont différents, utilisez plutôt une
+                            même Payé/Total. Si leurs prix sont différents, utilisez plutôt une
                             ligne séparée par acte ("Ajouter une ligne").
                           </p>
                         )}
@@ -345,7 +370,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                               {act.selectedCommonActs.length >= 1 && (
                                 <p className="text-[11px] text-amber-600 mb-2 leading-snug">
                                   ⚠️ Cocher plusieurs actes ici les combine en une seule ligne avec
-                                  un seul Payé/Reste. Pour des actes à prix différents, préférez
+                                  un seul Payé/Total. Pour des actes à prix différents, préférez
                                   une ligne par acte.
                                 </p>
                               )}
@@ -418,7 +443,18 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                           min="0"
                           step="0.5"
                           value={act.montantRecu || ''}
-                          onChange={(e) => updateAct(index, 'montantRecu', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => updateActAmount(index, 'montantRecu', parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className="input py-1.5 text-sm w-24 text-right"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={act.cout || ''}
+                          onChange={(e) => updateActAmount(index, 'cout', parseFloat(e.target.value) || 0)}
                           placeholder="0"
                           className="input py-1.5 text-sm w-24 text-right"
                         />
@@ -429,9 +465,9 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                           min="0"
                           step="0.5"
                           value={act.reste || ''}
-                          onChange={(e) => updateAct(index, 'reste', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => updateActAmount(index, 'reste', parseFloat(e.target.value) || 0)}
                           placeholder="0"
-                          className="input py-1.5 text-sm w-24 text-right"
+                          className={`input py-1.5 text-sm w-24 text-right ${Number(act.reste) > 0 ? 'text-rose-600' : ''}`}
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -465,7 +501,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
               </table>
             </div>
             <p className="sm:hidden text-xs text-slate-400 mt-1.5 text-center">
-              ← Faites glisser le tableau pour voir Payé / Reste / Mode →
+              ← Faites glisser le tableau pour voir Payé / Total / Reste / Mode →
             </p>
           </div>
 
