@@ -16,6 +16,7 @@ import type {
   PatientDocument,
   DocumentType,
   CabinetMe,
+  Role,
 } from '@/types';
 
 export type { Prescription, PrescriptionItem, PatientDocument, DocumentType, CabinetMe };
@@ -42,8 +43,13 @@ export const authApi = {
 
 // ===== PATIENTS =====
 export const patientsApi = {
-  list: (params?: { search?: string; page?: number; limit?: number }) =>
-    api.get<PaginatedPatients>('/patients', { params }).then((r) => r.data),
+  list: (params?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: 'nom' | 'numeroDossier';
+    sortOrder?: 'asc' | 'desc';
+  }) => api.get<PaginatedPatients>('/patients', { params }).then((r) => r.data),
 
   get: (id: number) =>
     api.get<PatientWithDetails>(`/patients/${id}`).then((r) => r.data),
@@ -664,4 +670,29 @@ export const documentsApi = {
 // ===== CABINET (entête des documents imprimés) =====
 export const cabinetApi = {
   me: () => api.get<CabinetMe>('/cabinet/me').then((r) => r.data),
+};
+
+// ===== ÉQUIPE (Phase 2, 2026-09-29) =====
+export interface TeamMember {
+  id: number;
+  nom: string;
+  prenom: string;
+  email: string;
+  role: Role;
+  actif: boolean;
+  createdAt: string;
+}
+
+export interface InvitedTeamMember extends TeamMember {
+  tempPassword: string;
+}
+
+export const teamApi = {
+  list: () => api.get<TeamMember[]>('/team').then((r) => r.data),
+
+  invite: (data: { nom: string; prenom: string; email: string; role: Role }) =>
+    api.post<InvitedTeamMember>('/team', data).then((r) => r.data),
+
+  update: (id: number, data: Partial<{ role: Role; actif: boolean }>) =>
+    api.patch<TeamMember>(`/team/${id}`, data).then((r) => r.data),
 };
