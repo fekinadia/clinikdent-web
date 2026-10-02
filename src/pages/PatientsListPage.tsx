@@ -9,14 +9,27 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { calculateAge } from '@/lib/utils';
 import { NewPatientDialog } from '@/components/patients/NewPatientDialog';
 
+// Tri de la liste (2026-10-02) : "sort" combine le champ et le sens en
+// une seule valeur pour un <select> simple à utiliser.
+type SortOption = 'nom-asc' | 'numeroDossier-asc' | 'numeroDossier-desc';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'nom-asc', label: 'Nom (A → Z)' },
+  { value: 'numeroDossier-asc', label: 'N° de dossier (croissant)' },
+  { value: 'numeroDossier-desc', label: 'N° de dossier (décroissant)' },
+];
+
 export function PatientsListPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<SortOption>('nom-asc');
   const [openDialog, setOpenDialog] = useState(false);
 
+  const [sortBy, sortOrder] = sort.split('-') as ['nom' | 'numeroDossier', 'asc' | 'desc'];
+
   const { data, isLoading } = useQuery({
-    queryKey: ['patients', search, page],
-    queryFn: () => patientsApi.list({ search, page, limit: 20 }),
+    queryKey: ['patients', search, page, sort],
+    queryFn: () => patientsApi.list({ search, page, limit: 20, sortBy, sortOrder }),
   });
 
   return (
@@ -35,9 +48,9 @@ export function PatientsListPage() {
 
       <div className="flex-1 overflow-auto p-6 animate-fade-in">
         <div className="card overflow-hidden">
-          {/* Search */}
-          <div className="p-4 border-b border-slate-200">
-            <div className="relative max-w-md">
+          {/* Search + tri */}
+          <div className="p-4 border-b border-slate-200 flex flex-wrap items-center gap-3">
+            <div className="relative max-w-md flex-1 min-w-[220px]">
               <Search
                 size={16}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -49,6 +62,21 @@ export function PatientsListPage() {
                 placeholder="Rechercher par nom, GSM, dossier..."
                 className="input pl-9"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="patients-sort" className="text-xs text-slate-500 whitespace-nowrap">
+                Trier par
+              </label>
+              <select
+                id="patients-sort"
+                value={sort}
+                onChange={(e) => { setSort(e.target.value as SortOption); setPage(1); }}
+                className="input py-1.5 text-sm"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
