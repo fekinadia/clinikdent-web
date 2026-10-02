@@ -2,10 +2,15 @@
 // Types partagés avec le backend
 // ====================================
 
+// Équipe & rôles (2026-09-29) — doit rester synchronisé avec Role côté
+// backend (src/auth/roles.decorator.ts).
+export type Role = 'admin' | 'medecin' | 'assistante' | 'reception' | 'comptable';
+
 export interface User {
   id: number;
   email: string;
   cabinetId: number;
+  role?: Role;
   isPlatformAdmin?: boolean;
 }
 

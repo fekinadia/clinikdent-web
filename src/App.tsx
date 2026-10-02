@@ -40,6 +40,7 @@ const TreatmentsPage = lazy(() => import('@/pages/PlaceholderPages').then((m) =>
 const SettingsPage = lazy(() => import('@/pages/PlaceholderPages').then((m) => ({ default: m.SettingsPage })));
 const FinancePage = lazy(() => import('@/pages/FinancePage').then((m) => ({ default: m.FinancePage })));
 const ExpensesPage = lazy(() => import('@/pages/ExpensesPage').then((m) => ({ default: m.ExpensesPage })));
+const TeamPage = lazy(() => import('@/pages/TeamPage').then((m) => ({ default: m.TeamPage })));
 const DemoAccountsPage = lazy(() => import('@/pages/admin/DemoAccountsPage').then((m) => ({ default: m.DemoAccountsPage })));
 const AllAccountsPage = lazy(() => import('@/pages/admin/AllAccountsPage').then((m) => ({ default: m.AllAccountsPage })));
 
@@ -103,6 +104,7 @@ export function App() {
               <Route path="stats" element={<StatisticsPage />} />
               <Route path="parametres/abonnement" element={<SubscriptionPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="equipe" element={<TeamPage />} />
               <Route path="admin/demo-accounts" element={<DemoAccountsPage />} />
               <Route path="admin/accounts" element={<AllAccountsPage />} />
             </Route>

@@ -28,11 +28,13 @@ import {
   KeyRound,
   Armchair,
   Banknote,
+  UserCog,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
+import type { Role } from '@/types';
 
 // Masqué temporairement dans le menu en attendant la validation Meta Tech Provider (Nadia, 2026-08-29).
 // Repasser à true une fois la connexion WhatsApp par cabinet prête (Phase 3).
@@ -63,7 +65,22 @@ const PARAMETRES_MENU_VISIBLE = false;
 // juste retirée du menu.
 const RECALLS_MENU_VISIBLE = false;
 
-type NavItem = { to: string; icon: LucideIcon; label: string; end?: boolean };
+// Équipe & rôles (2026-09-29) : `roles` restreint l'affichage du lien côté
+// menu (confort d'usage — l'API refuse déjà les requêtes côté serveur,
+// voir la matrice dans claude/roadmap-parite-cabinet-care-2026-09-26.md).
+// `undefined` = visible pour tous les rôles authentifiés.
+type NavItem = { to: string; icon: LucideIcon; label: string; end?: boolean; roles?: Role[] };
+
+const SOINS_ROLES: Role[] = ['admin', 'medecin', 'assistante'];
+const FACTURATION_ROLES: Role[] = ['admin', 'medecin', 'comptable'];
+
+const ROLE_LABELS: Record<Role, string> = {
+  admin: 'Admin',
+  medecin: 'Médecin',
+  assistante: 'Assistante',
+  reception: 'Réception',
+  comptable: 'Comptable',
+};
 
 // Navigation regroupée par section (style "ambiance Dentalis" : sidebar sombre,
 // items groupés, icônes dans des pastilles).
@@ -81,19 +98,20 @@ const navSections: { label: string; items: NavItem[] }[] = [
   {
     label: 'Soins & suivi',
     items: [
-      { to: '/treatments', icon: Activity, label: 'Soins' },
-      { to: '/prescriptions', icon: FileText, label: 'Ordonnances' },
-      { to: '/documents', icon: FileText, label: 'Documents' },
+      { to: '/treatments', icon: Activity, label: 'Soins', roles: SOINS_ROLES },
+      { to: '/prescriptions', icon: FileText, label: 'Ordonnances', roles: SOINS_ROLES },
+      { to: '/documents', icon: FileText, label: 'Documents', roles: SOINS_ROLES },
       { to: '/caisse', icon: Banknote, label: 'Caisse & chèques' },
-      { to: '/finance', icon: Wallet, label: 'Facturation' },
-      { to: '/expenses', icon: Receipt, label: 'Dépenses' },
-      { to: '/stats', icon: BarChart3, label: 'Statistiques' },
+      { to: '/finance', icon: Wallet, label: 'Facturation', roles: FACTURATION_ROLES },
+      { to: '/expenses', icon: Receipt, label: 'Dépenses', roles: FACTURATION_ROLES },
+      { to: '/stats', icon: BarChart3, label: 'Statistiques', roles: FACTURATION_ROLES },
     ],
   },
   {
     label: 'Compte',
     items: [
-      { to: '/parametres/abonnement', icon: CreditCard, label: 'Abonnement' },
+      { to: '/equipe', icon: UserCog, label: 'Équipe', roles: ['admin'] },
+      { to: '/parametres/abonnement', icon: CreditCard, label: 'Abonnement', roles: ['admin'] },
     ],
   },
 ];
@@ -205,6 +223,11 @@ export function AppLayout() {
     navigate('/login');
   };
 
+  // Équipe & rôles (2026-09-29) : un item avec `roles` n'est affiché que si
+  // le rôle de l'utilisateur y figure. Un utilisateur sans rôle connu
+  // (anciennes sessions, avant cet ajout) voit tout, comme avant.
+  const canSee = (item: NavItem) => !item.roles || !user?.role || item.roles.includes(user.role);
+
   const visibleSections = navSections
     .map((section) => ({
       ...section,
@@ -212,7 +235,8 @@ export function AppLayout() {
         .filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement')
         .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
         .filter((item) => ORDONNANCES_MENU_VISIBLE || item.to !== '/prescriptions')
-        .filter((item) => RECALLS_MENU_VISIBLE || item.to !== '/recalls'),
+        .filter((item) => RECALLS_MENU_VISIBLE || item.to !== '/recalls')
+        .filter(canSee),
     }))
     .filter((section) => section.items.length > 0);
 
@@ -383,7 +407,7 @@ export function AppLayout() {
               <div className="text-white text-[12px] font-semibold truncate">
                 {user?.email}
               </div>
-              <div className="text-[#5b7186] text-[10.5px]">Médecin</div>
+              <div className="text-[#5b7186] text-[10.5px]">{ROLE_LABELS[user?.role || 'medecin']}</div>
             </div>
             <KeyRound size={14} className="text-[#5b7186] flex-shrink-0" />
           </button>
