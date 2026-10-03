@@ -29,6 +29,7 @@ import {
   Armchair,
   Banknote,
   UserCog,
+  Pill,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
@@ -65,6 +66,12 @@ const PARAMETRES_MENU_VISIBLE = false;
 // juste retirée du menu.
 const RECALLS_MENU_VISIBLE = false;
 
+// Masqué (Nadia, 2026-10-03) : elle n'utilise pas la gestion d'équipe pour
+// l'instant. Fonctionnalité et données intactes (comptes déjà invités non
+// affectés), juste retirée du menu — même pattern que les autres menus
+// masqués ci-dessus.
+const EQUIPE_MENU_VISIBLE = false;
+
 // Équipe & rôles (2026-09-29) : `roles` restreint l'affichage du lien côté
 // menu (confort d'usage — l'API refuse déjà les requêtes côté serveur,
 // voir la matrice dans claude/roadmap-parite-cabinet-care-2026-09-26.md).
@@ -100,6 +107,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
     items: [
       { to: '/treatments', icon: Activity, label: 'Soins', roles: SOINS_ROLES },
       { to: '/prescriptions', icon: FileText, label: 'Ordonnances', roles: SOINS_ROLES },
+      { to: '/medicaments', icon: Pill, label: 'Médicaments', roles: SOINS_ROLES },
       { to: '/documents', icon: FileText, label: 'Documents', roles: SOINS_ROLES },
       { to: '/caisse', icon: Banknote, label: 'Caisse & chèques' },
       { to: '/finance', icon: Wallet, label: 'Facturation', roles: FACTURATION_ROLES },
@@ -236,6 +244,7 @@ export function AppLayout() {
         .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
         .filter((item) => ORDONNANCES_MENU_VISIBLE || item.to !== '/prescriptions')
         .filter((item) => RECALLS_MENU_VISIBLE || item.to !== '/recalls')
+        .filter((item) => EQUIPE_MENU_VISIBLE || item.to !== '/equipe')
         .filter(canSee),
     }))
     .filter((section) => section.items.length > 0);
