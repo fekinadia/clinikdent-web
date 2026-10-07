@@ -1,9 +1,10 @@
 import { Fragment, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Activity, Edit } from 'lucide-react';
+import { Plus, Activity, Edit, Banknote, X, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { api } from '../api/client';
+import { treatmentsApi } from '../api/endpoints';
 import { NewTreatmentDialog } from './NewTreatmentDialog';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
 
@@ -43,6 +44,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
   const qc = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [payingAct, setPayingAct] = useState<TreatmentAct | null>(null);
+  const [isGlobalPayOpen, setIsGlobalPayOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{
     dateSoin: string;
@@ -237,6 +239,16 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
               <span className={totalDueAll > 0.01 ? 'text-rose-600 font-medium' : 'text-slate-400 font-medium'}>
                 Reste : {totalDueAll.toFixed(2)} DT
               </span>
+              {totalDueAll > 0.01 && (
+                <button
+                  onClick={() => setIsGlobalPayOpen(true)}
+                  className="ml-auto px-3 py-1.5 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm hover:shadow"
+                  style={{ backgroundColor: '#0e6ba8' }}
+                >
+                  <Banknote className="w-3.5 h-3.5" />
+                  Encaisser
+                </button>
+              )}
             </div>
           )}
 
@@ -563,6 +575,233 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
           onClose={() => setPayingAct(null)}
         />
       )}
+
+      {/* Modal encaissement global (bandeau Total / Encaissé / Reste) */}
+      {isGlobalPayOpen && (
+        <GlobalPaymentDialog
+          patientId={patientId}
+          treatments={treatments}
+          onClose={() => setIsGlobalPayOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ===== Encaissement global (2026-10-07, demandé par Nadia) =====
+// Le patient donne une somme sur l'ensemble de ce qu'il doit : on la répartit
+// sur les actes non soldés, du soin le plus ancien au plus récent, en
+// réutilisant l'encaissement par acte existant (PATCH
+// /treatments/acts/:id/payment) — aucune modification du backend. Chaque part
+// crée donc sa propre ligne de paiement (visible dans Caisse & chèques).
+
+const GLOBAL_PAYMENT_MODES = [
+  { value: 'especes', label: 'Espèces' },
+  { value: 'cheque', label: 'Chèque' },
+  { value: 'd17', label: 'D17' },
+  { value: 'virement', label: 'Virement' },
+  { value: 'cnam', label: 'CNAM' },
+];
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function GlobalPaymentDialog({
+  patientId,
+  treatments,
+  onClose,
+}: {
+  patientId: number;
+  treatments: Treatment[];
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+
+  const unpaid = [...treatments]
+    .sort(
+      (a, b) =>
+        new Date(a.dateSoin).getTime() - new Date(b.dateSoin).getTime() || a.id - b.id,
+    )
+    .flatMap((t) =>
+      t.acts.map((act) => ({
+        act,
+        dateSoin: t.dateSoin,
+        reste: round2(Number(act.cout) - Number(act.montantRecu) - Number(act.remise || 0)),
+      })),
+    )
+    .filter((x) => x.reste > 0.005);
+  const totalDue = round2(unpaid.reduce((s, x) => s + x.reste, 0));
+
+  const [montant, setMontant] = useState(totalDue.toFixed(2));
+  const [modeReglement, setModeReglement] = useState('especes');
+  const [numeroCheque, setNumeroCheque] = useState('');
+  const [banque, setBanque] = useState('');
+  const [dateEcheance, setDateEcheance] = useState('');
+  const isCheque = modeReglement === 'cheque';
+
+  // Répartition affichée en direct sous le montant.
+  const value = parseFloat(montant) || 0;
+  let left = round2(value);
+  const allocation = unpaid
+    .map((x) => {
+      const part = round2(Math.min(left, x.reste));
+      left = round2(left - part);
+      return { ...x, part };
+    })
+    .filter((x) => x.part > 0);
+
+  const pay = useMutation({
+    mutationFn: async () => {
+      if (!value || value <= 0) throw new Error('Montant invalide');
+      if (value > totalDue + 0.01) {
+        throw new Error(`Le montant dépasse le reste dû (${totalDue.toFixed(2)} DT)`);
+      }
+      let applied = 0;
+      for (const x of allocation) {
+        try {
+          await treatmentsApi.recordPayment(x.act.id, {
+            montant: x.part,
+            modeReglement,
+            ...(isCheque
+              ? {
+                  numeroCheque: numeroCheque.trim() || undefined,
+                  banque: banque.trim() || undefined,
+                  dateEcheance: dateEcheance || undefined,
+                }
+              : {}),
+          });
+          applied = round2(applied + x.part);
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || err?.message || 'erreur';
+          throw new Error(
+            applied > 0
+              ? `Encaissement interrompu : ${applied.toFixed(2)} DT enregistrés sur ${value.toFixed(2)} DT (${msg})`
+              : msg,
+          );
+        }
+      }
+      return applied;
+    },
+    onSuccess: (applied) => {
+      toast.success(`Encaissement de ${applied.toFixed(2)} DT enregistré`);
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erreur lors de l'enregistrement");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['treatments', patientId] });
+      qc.invalidateQueries({ queryKey: ['finSummary', patientId] });
+      qc.invalidateQueries({ queryKey: ['caisse'] });
+      qc.invalidateQueries({ queryKey: ['cheques'] });
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900" style={{ fontFamily: 'Fraunces, serif' }}>
+              Encaisser
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">Reste dû total : {totalDue.toFixed(2)} DT</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition" aria-label="Fermer">
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Montant encaissé (DT)</label>
+            <input
+              type="number" min="0" max={totalDue} step="0.5"
+              value={montant} onChange={(e) => setMontant(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            />
+            {value > totalDue + 0.01 && (
+              <p className="text-xs text-rose-600 mt-1">Le montant dépasse le reste dû.</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Mode de règlement</label>
+            <select
+              value={modeReglement} onChange={(e) => setModeReglement(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
+            >
+              {GLOBAL_PAYMENT_MODES.map((pm) => (
+                <option key={pm.value} value={pm.value}>{pm.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {isCheque && (
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">N° de chèque</label>
+                  <input
+                    value={numeroCheque} onChange={(e) => setNumeroCheque(e.target.value)} maxLength={50}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">Banque</label>
+                  <input
+                    value={banque} onChange={(e) => setBanque(e.target.value)} maxLength={100} placeholder="BIAT, STB…"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 mb-1">Date d'échéance (si chèque post-daté)</label>
+                <input
+                  type="date" value={dateEcheance} onChange={(e) => setDateEcheance(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {allocation.length > 0 && value <= totalDue + 0.01 && (
+            <div>
+              <p className="text-xs text-slate-600 mb-1.5">Répartition (du soin le plus ancien au plus récent)</p>
+              <ul className="rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm">
+                {allocation.map((x) => (
+                  <li key={x.act.id} className="flex items-center justify-between px-3 py-2">
+                    <span className="text-slate-700">
+                      <span className="text-slate-400 text-xs mr-2">
+                        {format(new Date(x.dateSoin), 'dd/MM/yy')}
+                      </span>
+                      {x.act.libelle}
+                      {x.act.dents ? <span className="text-slate-400 text-xs ml-1">({x.act.dents})</span> : null}
+                    </span>
+                    <span className="font-medium text-emerald-600 whitespace-nowrap ml-3">
+                      {x.part.toFixed(2)} DT
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3">
+          <button onClick={onClose} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">
+            Annuler
+          </button>
+          <button
+            onClick={() => pay.mutate()}
+            disabled={pay.isPending || !value || value <= 0 || value > totalDue + 0.01}
+            className="px-6 py-2.5 text-white rounded-lg font-medium transition flex items-center gap-2 disabled:opacity-50"
+            style={{ backgroundColor: '#0e6ba8' }}
+          >
+            <Save className="w-4 h-4" />
+            {pay.isPending ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
