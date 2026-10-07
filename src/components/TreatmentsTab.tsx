@@ -150,6 +150,16 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
 
   // Totaux globaux affichés au-dessus du tableau, sur le même principe que
   // le "Payé" / "Dû" qui apparaissait auparavant séance par séance.
+  // Total facturé (somme des coûts des actes) — demandé par Nadia le
+  // 2026-10-07 pour voir Total / Encaissé / Reste côte à côte.
+  const totalBilledAll = treatments.reduce(
+    (sum, t) => sum + t.acts.reduce((s, a) => s + Number(a.cout), 0),
+    0,
+  );
+  const totalRemiseAll = treatments.reduce(
+    (sum, t) => sum + t.acts.reduce((s, a) => s + Number(a.remise || 0), 0),
+    0,
+  );
   const totalPaidAll = treatments.reduce(
     (sum, t) => sum + t.acts.reduce((s, a) => s + Number(a.montantRecu), 0),
     0,
@@ -211,12 +221,22 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
       {/* Tableau des soins, façon fiche patient papier : Date / Dent / Acte / Payé / Reste */}
       {!isLoading && treatments.length > 0 && (
         <div className="border border-slate-200 rounded-xl overflow-hidden">
-          {(totalPaidAll > 0.01 || totalDueAll > 0.01) && (
-            <div className="flex items-center gap-4 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-sm">
-              <span className="text-emerald-600 font-medium">Payé : {totalPaidAll.toFixed(2)} DT</span>
-              {totalDueAll > 0.01 && (
-                <span className="text-rose-600 font-medium">Reste dû : {totalDueAll.toFixed(2)} DT</span>
+          {(totalBilledAll > 0.01 || totalPaidAll > 0.01) && (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-sm">
+              <span className="text-slate-700 font-medium">
+                Total : {totalBilledAll.toFixed(2)} DT
+              </span>
+              <span className="text-emerald-600 font-medium">
+                Encaissé : {totalPaidAll.toFixed(2)} DT
+              </span>
+              {totalRemiseAll > 0.01 && (
+                <span className="text-amber-600 font-medium">
+                  Remise : {totalRemiseAll.toFixed(2)} DT
+                </span>
               )}
+              <span className={totalDueAll > 0.01 ? 'text-rose-600 font-medium' : 'text-slate-400 font-medium'}>
+                Reste : {totalDueAll.toFixed(2)} DT
+              </span>
             </div>
           )}
 
