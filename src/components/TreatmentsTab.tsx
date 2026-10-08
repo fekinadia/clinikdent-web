@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Activity, Edit, Banknote, X, Save } from 'lucide-react';
+import { Plus, Activity, Edit, Banknote, X, Save, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { api } from '../api/client';
@@ -59,6 +59,55 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
       return res.data;
     },
   });
+
+  // Suppressions (2026-10-07) : un acte (avec ses encaissements) ou un seul
+  // encaissement. Confirmation obligatoire — action définitive.
+  const invalidateAfterDelete = () => {
+    qc.invalidateQueries({ queryKey: ['treatments', patientId] });
+    qc.invalidateQueries({ queryKey: ['finSummary', patientId] });
+    qc.invalidateQueries({ queryKey: ['caisse'] });
+    qc.invalidateQueries({ queryKey: ['cheques'] });
+  };
+
+  const deleteActMutation = useMutation({
+    mutationFn: (actId: number) => api.delete(`/treatments/acts/${actId}`),
+    onSuccess: () => {
+      toast.success('Acte supprimé');
+      invalidateAfterDelete();
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Erreur lors de la suppression');
+    },
+  });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: (paymentId: number) => api.delete(`/treatments/payments/${paymentId}`),
+    onSuccess: () => {
+      toast.success('Encaissement supprimé');
+      invalidateAfterDelete();
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Erreur lors de la suppression');
+    },
+  });
+
+  function handleDeleteAct(act: TreatmentAct) {
+    const paye = Number(act.montantRecu);
+    const message =
+      `Supprimer « ${act.libelle} » de l'historique des soins ?` +
+      (paye > 0.01
+        ? `\n\nSes encaissements (${paye.toFixed(2)} DT) seront aussi supprimés de la caisse.`
+        : '');
+    if (window.confirm(message)) deleteActMutation.mutate(act.id);
+  }
+
+  function handleDeletePayment(payment: ActPayment, act: TreatmentAct) {
+    const message =
+      `Supprimer l'encaissement de ${Number(payment.montant).toFixed(2)} DT du ` +
+      `${format(new Date(payment.datePaiement), 'dd/MM/yy')} (${act.libelle}) ?` +
+      `\n\nCe montant redeviendra dû par le patient.`;
+    if (window.confirm(message)) deletePaymentMutation.mutate(payment.id);
+  }
 
   function startEditing(treatment: Treatment) {
     setEditingId(treatment.id);
@@ -453,6 +502,14 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                                   <Edit size={14} />
                                 </button>
                               )}
+                              <button
+                                onClick={() => handleDeleteAct(act)}
+                                disabled={deleteActMutation.isPending}
+                                className="text-slate-400 hover:text-rose-600 transition disabled:opacity-50"
+                                title="Supprimer cet acte"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -491,7 +548,18 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                               {Number(p.montant).toFixed(2)}
                             </td>
                             <td className="px-4 py-1.5"></td>
-                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5">
+                              <div className="flex items-center justify-end">
+                                <button
+                                  onClick={() => handleDeletePayment(p, act)}
+                                  disabled={deletePaymentMutation.isPending}
+                                  className="text-slate-400 hover:text-rose-600 transition disabled:opacity-50"
+                                  title="Supprimer cet encaissement"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         )),
                       )}
