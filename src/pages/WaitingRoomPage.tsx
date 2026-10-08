@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Armchair,
+  Banknote,
   CalendarClock,
   CheckCircle2,
   DoorOpen,
@@ -18,6 +19,18 @@ import type { Appointment } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatTime } from '@/lib/utils';
+import { VisitPaymentDialog } from '@/components/VisitPaymentDialog';
+
+// Visites déjà encaissées aujourd'hui (ids de RDV), mémorisées sur ce
+// navigateur pour afficher « Visite payée » même après un rechargement.
+const visitesKey = () => `clinikdent_visites_payees_${new Date().toISOString().slice(0, 10)}`;
+function lireVisitesPayees(): number[] {
+  try {
+    return JSON.parse(localStorage.getItem(visitesKey()) || '[]');
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Salle d'attente (2026-09-26) — suivi en direct des patients du jour :
@@ -62,6 +75,30 @@ function useNow() {
 export function WaitingRoomPage() {
   const queryClient = useQueryClient();
   const now = useNow();
+  // Encaissement de la visite à l'arrivée (2026-10-08).
+  const [visitFor, setVisitFor] = useState<Appointment | null>(null);
+  const [visitesPayees, setVisitesPayees] = useState<number[]>(lireVisitesPayees);
+  const marquerVisitePayee = (id: number) => {
+    const next = [...new Set([...visitesPayees, id])];
+    setVisitesPayees(next);
+    try {
+      localStorage.setItem(visitesKey(), JSON.stringify(next));
+    } catch {
+      /* stockage indisponible : l'indication disparaîtra au rechargement */
+    }
+  };
+  const boutonVisite = (a: Appointment) =>
+    visitesPayees.includes(a.id) ? (
+      <span className="text-xs font-medium text-emerald-600 flex items-center gap-1 px-1">
+        <CheckCircle2 size={13} /> Visite payée
+      </span>
+    ) : (
+      <button onClick={() => setVisitFor(a)}
+        className="btn-ghost !rounded-full !py-1.5 !px-3 text-xs flex items-center gap-1.5 text-emerald-700"
+        title="Le patient paie la visite">
+        <Banknote size={13} /> Visite
+      </button>
+    );
 
   const { data: appts = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: ['appointments-today'],
@@ -182,6 +219,7 @@ export function WaitingRoomPage() {
                             className="btn-primary !rounded-full !py-1.5 !px-3 text-xs flex items-center gap-1.5">
                             <LogIn size={13} /> Arrivé
                           </button>
+                          {boutonVisite(a)}
                           {enRetard && (
                             <button disabled={busy} onClick={() => noShowMutation.mutate(a.id)}
                               className="btn-ghost !rounded-full !py-1.5 !px-3 text-xs flex items-center gap-1.5 text-rose-600"
@@ -218,6 +256,7 @@ export function WaitingRoomPage() {
                             className="btn-primary !rounded-full !py-1.5 !px-3 text-xs flex items-center gap-1.5">
                             <DoorOpen size={13} /> Faire entrer
                           </button>
+                          {boutonVisite(a)}
                           <button disabled={busy} onClick={() => setStatut(a, 'confirme', 'Arrivée annulée')}
                             className="btn-ghost !rounded-full !py-1.5 !px-2.5 text-xs flex items-center gap-1"
                             title="Annuler l'arrivée (erreur de clic)">
@@ -276,6 +315,16 @@ export function WaitingRoomPage() {
           </>
         )}
       </div>
+
+      {visitFor && (
+        <VisitPaymentDialog
+          patientId={visitFor.patientId}
+          patientName={visitFor.patient ? `${visitFor.patient.prenom} ${visitFor.patient.nom}` : undefined}
+          appointmentId={visitFor.id}
+          onPaid={() => marquerVisitePayee(visitFor.id)}
+          onClose={() => setVisitFor(null)}
+        />
+      )}
     </>
   );
 }

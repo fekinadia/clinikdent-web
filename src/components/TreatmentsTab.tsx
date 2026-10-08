@@ -7,6 +7,7 @@ import { api } from '../api/client';
 import { treatmentsApi } from '../api/endpoints';
 import { NewTreatmentDialog } from './NewTreatmentDialog';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
+import { VisitPaymentDialog } from './VisitPaymentDialog';
 
 interface TreatmentsTabProps {
   patientId: number;
@@ -45,6 +46,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [payingAct, setPayingAct] = useState<TreatmentAct | null>(null);
   const [isGlobalPayOpen, setIsGlobalPayOpen] = useState(false);
+  const [isVisitOpen, setIsVisitOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{
     dateSoin: string;
@@ -237,6 +239,15 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
               : `${treatments.length} séance${treatments.length > 1 ? 's' : ''} de soins`}
           </p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <button
+          onClick={() => setIsVisitOpen(true)}
+          className="btn-ghost !rounded-full !px-4 !py-2.5 text-emerald-700 flex items-center gap-1.5"
+          title="Le patient paie la visite avant les soins"
+        >
+          <Banknote className="w-4 h-4" />
+          Payer la visite
+        </button>
         <button
           onClick={() => setIsDialogOpen(true)}
           className="btn-primary !rounded-full !px-5 !py-2.5 shadow-sm hover:shadow"
@@ -244,6 +255,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
           <Plus className="w-4 h-4" />
           Nouveau soin
         </button>
+        </div>
       </div>
 
       {/* État de chargement */}
@@ -642,6 +654,11 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
           act={payingAct}
           onClose={() => setPayingAct(null)}
         />
+      )}
+
+      {/* Modal encaissement de la visite (2026-10-08) */}
+      {isVisitOpen && (
+        <VisitPaymentDialog patientId={patientId} onClose={() => setIsVisitOpen(false)} />
       )}
 
       {/* Modal encaissement global (bandeau Total / Encaissé / Reste) */}
