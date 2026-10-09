@@ -17,7 +17,10 @@ import { statisticsApi, StatisticsOverview } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatMoney } from '@/lib/utils';
 
+// "Ce mois" = depuis le 1er du mois en cours (ajouté le 2026-10-09, même
+// calcul côté API que les autres périodes).
 const PERIODES = [
+  { label: 'Ce mois', value: 1 },
   { label: '3 mois', value: 3 },
   { label: '6 mois', value: 6 },
   { label: '12 mois', value: 12 },
@@ -110,7 +113,7 @@ export function StatisticsPage() {
                 color="bg-blue-50"
               />
               <KpiCard
-                label={`Nouveaux (${months} mois)`}
+                label={`Nouveaux (${months === 1 ? 'ce mois' : `${months} mois`})`}
                 value={nouveauxPatientsPeriode}
                 icon={<TrendingUp size={18} className="text-emerald-600" />}
                 color="bg-emerald-50"
