@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Receipt, Plus, Pencil, Trash2, Download, X, Save } from 'lucide-react';
+import { Receipt, Plus, Pencil, Trash2, Download, X, Save, Paperclip, Upload } from 'lucide-react';
 import { expensesApi, Expense, ExpensesOverview } from '@/api/endpoints';
+import { api } from '@/api/client';
+import { compressImage } from '@/lib/compressImage';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatMoney, formatDateShort } from '@/lib/utils';
@@ -53,6 +55,44 @@ function downloadCsv(filename: string, rows: string[][]) {
   URL.revokeObjectURL(url);
 }
 
+// Pièce jointe (facture, reçu — 2026-10-09) : l'API renvoie `aPieceJointe`
+// et le nom du fichier ; le fichier lui-même s'ouvre via un lien temporaire.
+type ExpenseRow = Expense & {
+  aPieceJointe?: boolean;
+  pieceJointeNom?: string | null;
+  pieceJointeMime?: string | null;
+};
+
+const PJ_ACCEPT = 'image/*,application/pdf';
+
+async function envoyerPieceJointe(expenseId: number, file: File, onProgress?: (pct: number) => void) {
+  // Photos de téléphone allégées avant envoi (même outil que les pièces
+  // jointes patient), qualité « document » pour garder la facture lisible.
+  const toSend = await compressImage(file, 'scanner');
+  const fd = new FormData();
+  fd.append('file', toSend, toSend.name || file.name);
+  await api.post(`/expenses/${expenseId}/piece-jointe`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+    },
+  });
+}
+
+// Ouvre la pièce jointe dans un nouvel onglet. La fenêtre est ouverte tout de
+// suite (avant l'appel réseau) pour ne pas être bloquée par le navigateur.
+async function ouvrirPieceJointe(expenseId: number) {
+  const win = window.open('', '_blank');
+  try {
+    const { data } = await api.get<{ url: string }>(`/expenses/${expenseId}/piece-jointe`);
+    if (win) win.location.href = data.url;
+    else window.location.href = data.url;
+  } catch (error: any) {
+    win?.close();
+    toast.error(error?.response?.data?.message || "Impossible d'ouvrir la pièce jointe");
+  }
+}
+
 interface ExpenseFormState {
   libelle: string;
   montant: string;
@@ -80,11 +120,14 @@ function ExpenseDialog({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  expense?: Expense | null;
+  expense?: ExpenseRow | null;
 }) {
   const qc = useQueryClient();
   const isEditMode = !!expense;
   const [form, setForm] = useState<ExpenseFormState>(emptyForm());
+  const [file, setFile] = useState<File | null>(null);
+  const [retirerPJ, setRetirerPJ] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
 
   // Recharge le formulaire à chaque ouverture (le dialogue reste monté en
   // permanence dans la page, contrôlé par `isOpen` — sans cet effet, passer
@@ -92,6 +135,9 @@ function ExpenseDialog({
   // garderait les anciennes valeurs affichées).
   useEffect(() => {
     if (isOpen) {
+      setFile(null);
+      setRetirerPJ(false);
+      setProgress(null);
       setForm(
         expense
           ? {
@@ -108,7 +154,7 @@ function ExpenseDialog({
   }, [isOpen, expense]);
 
   const saveMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const payload = {
         libelle: form.libelle.trim(),
         montant: Number(form.montant),
@@ -117,14 +163,36 @@ function ExpenseDialog({
         fournisseur: form.fournisseur.trim() || undefined,
         justificatif: form.justificatif.trim() || undefined,
       };
-      return isEditMode ? expensesApi.update(expense!.id, payload) : expensesApi.create(payload);
+      const saved = isEditMode
+        ? await expensesApi.update(expense!.id, payload)
+        : await expensesApi.create(payload);
+
+      // La dépense est enregistrée d'abord ; la pièce jointe suit. Si son
+      // envoi échoue, la dépense reste enregistrée et on le signale.
+      let pjErreur: string | null = null;
+      try {
+        if (file) {
+          setProgress(0);
+          await envoyerPieceJointe(saved.id, file, setProgress);
+        } else if (retirerPJ && expense?.aPieceJointe) {
+          await api.delete(`/expenses/${saved.id}/piece-jointe`);
+        }
+      } catch (error: any) {
+        pjErreur = error?.response?.data?.message || "la pièce jointe n'a pas pu être envoyée";
+      }
+      return { pjErreur };
     },
-    onSuccess: () => {
-      toast.success(isEditMode ? 'Dépense modifiée' : 'Dépense enregistrée');
+    onSuccess: ({ pjErreur }) => {
+      if (pjErreur) {
+        toast.error(`Dépense enregistrée, mais ${pjErreur}`);
+      } else {
+        toast.success(isEditMode ? 'Dépense modifiée' : 'Dépense enregistrée');
+      }
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['expenses-overview'] });
       onClose();
     },
+    onSettled: () => setProgress(null),
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Erreur lors de l'enregistrement");
     },
@@ -219,6 +287,74 @@ function ExpenseDialog({
               placeholder="Ex : n° de facture, ou une note"
             />
           </div>
+
+          <div>
+            <label className="label">Pièce jointe (optionnel)</label>
+            {isEditMode && expense?.aPieceJointe && !retirerPJ && !file && (
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm">
+                <Paperclip size={14} className="text-slate-400 flex-shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => ouvrirPieceJointe(expense.id)}
+                  className="text-primary-600 hover:underline truncate text-left"
+                >
+                  {expense.pieceJointeNom || 'Voir la pièce jointe'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRetirerPJ(true)}
+                  className="ml-auto text-xs text-rose-600 hover:text-rose-700 flex-shrink-0"
+                >
+                  Retirer
+                </button>
+              </div>
+            )}
+            {retirerPJ && !file && (
+              <p className="text-xs text-rose-600 mb-2">
+                La pièce jointe sera retirée à l'enregistrement.{' '}
+                <button type="button" onClick={() => setRetirerPJ(false)} className="underline">
+                  Annuler
+                </button>
+              </p>
+            )}
+            <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-slate-300 hover:border-primary-400 hover:bg-slate-50 cursor-pointer transition text-sm">
+              <Upload size={16} className="text-slate-400 flex-shrink-0" />
+              <span className={file ? 'text-slate-800 truncate' : 'text-slate-500'}>
+                {file
+                  ? file.name
+                  : isEditMode && expense?.aPieceJointe && !retirerPJ
+                    ? 'Remplacer par un autre fichier…'
+                    : 'Photo ou PDF de la facture / du reçu'}
+              </span>
+              {file && (
+                <button
+                  type="button"
+                  onClick={(ev) => {
+                    ev.preventDefault();
+                    setFile(null);
+                  }}
+                  className="ml-auto text-slate-400 hover:text-slate-600 flex-shrink-0"
+                  aria-label="Retirer le fichier choisi"
+                >
+                  <X size={14} />
+                </button>
+              )}
+              <input
+                type="file"
+                accept={PJ_ACCEPT}
+                className="hidden"
+                onChange={(ev) => {
+                  const f = ev.target.files?.[0];
+                  if (f && f.size > 15 * 1024 * 1024 && !f.type.startsWith('image/')) {
+                    toast.error('Fichier trop volumineux (15 Mo maximum)');
+                  } else if (f) {
+                    setFile(f);
+                  }
+                  ev.target.value = '';
+                }}
+              />
+            </label>
+          </div>
         </div>
 
         <div className="p-6 border-t border-slate-100 flex justify-end gap-2">
@@ -231,7 +367,13 @@ function ExpenseDialog({
             className="btn-primary"
           >
             <Save size={16} />
-            {isEditMode ? 'Enregistrer' : 'Ajouter'}
+            {progress !== null
+              ? `Envoi ${progress} %`
+              : saveMutation.isPending
+                ? 'Enregistrement...'
+                : isEditMode
+                  ? 'Enregistrer'
+                  : 'Ajouter'}
           </button>
         </div>
       </div>
@@ -245,7 +387,7 @@ export function ExpensesPage() {
   const [to, setTo] = useState('');
   const [categorieFilter, setCategorieFilter] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const qc = useQueryClient();
 
   const { data: overview, isLoading: loadingOverview } = useQuery<ExpensesOverview>({
@@ -253,7 +395,7 @@ export function ExpensesPage() {
     queryFn: () => expensesApi.getOverview(months),
   });
 
-  const { data: expenses, isLoading: loadingExpenses } = useQuery<Expense[]>({
+  const { data: expenses, isLoading: loadingExpenses } = useQuery<ExpenseRow[]>({
     queryKey: ['expenses', from, to, categorieFilter],
     queryFn: () =>
       expensesApi.list({
@@ -280,7 +422,7 @@ export function ExpensesPage() {
     setDialogOpen(true);
   }
 
-  function handleEdit(expense: Expense) {
+  function handleEdit(expense: ExpenseRow) {
     setEditingExpense(expense);
     setDialogOpen(true);
   }
@@ -454,6 +596,15 @@ export function ExpensesPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {e.aPieceJointe && (
+                            <button
+                              onClick={() => ouvrirPieceJointe(e.id)}
+                              className="btn-ghost !px-2 !py-1.5 text-primary-600"
+                              title={e.pieceJointeNom ? `Ouvrir : ${e.pieceJointeNom}` : 'Ouvrir la pièce jointe'}
+                            >
+                              <Paperclip size={14} />
+                            </button>
+                          )}
                           <button onClick={() => handleEdit(e)} className="btn-ghost !px-2 !py-1.5">
                             <Pencil size={14} />
                           </button>
