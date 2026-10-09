@@ -7,7 +7,11 @@ import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatMoney, formatDateShort } from '@/lib/utils';
 
+// "Ce mois" = depuis le 1er du mois en cours ; "3 mois" = ce mois + les 2
+// précédents (même calcul côté API que 6/12/24 — ajoutés le 2026-10-09).
 const PERIODES = [
+  { label: 'Ce mois', value: 1 },
+  { label: '3 mois', value: 3 },
   { label: '6 mois', value: 6 },
   { label: '12 mois', value: 12 },
   { label: '24 mois', value: 24 },
@@ -348,7 +352,7 @@ export function ExpensesPage() {
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                  Total dépenses ({months} mois)
+                  Total dépenses ({months === 1 ? 'ce mois' : `${months} mois`})
                 </span>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-rose-50">
                   <Receipt size={18} className="text-rose-600" />
