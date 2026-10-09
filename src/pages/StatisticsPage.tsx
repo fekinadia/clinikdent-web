@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, TrendingUp, Users, AlertTriangle } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Users, AlertTriangle, Wallet } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  LineChart,
+  ComposedChart,
   Line,
   XAxis,
   YAxis,
@@ -16,6 +16,12 @@ import {
 import { statisticsApi, StatisticsOverview } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatMoney } from '@/lib/utils';
+
+// Dépenses et bénéfice (2026-10-09) : renvoyés par l'API en plus des
+// recettes. Optionnels ici pour que la page reste fonctionnelle même si le
+// backend n'est pas encore à jour (affiche alors 0 dépense).
+type MontantParMois = { total: number; parMois: { mois: string; montant: number }[] };
+type Stats = StatisticsOverview & { depenses?: MontantParMois; benefice?: MontantParMois };
 
 // "Ce mois" = depuis le 1er du mois en cours (ajouté le 2026-10-09, même
 // calcul côté API que les autres périodes).
@@ -36,7 +42,7 @@ function formatMonthLabel(mois: string) {
 export function StatisticsPage() {
   const [months, setMonths] = useState(6);
 
-  const { data: stats, isLoading } = useQuery<StatisticsOverview>({
+  const { data: stats, isLoading } = useQuery<Stats>({
     queryKey: ['statistics-overview', months],
     queryFn: () => statisticsApi.overview(months),
   });
@@ -61,14 +67,21 @@ export function StatisticsPage() {
     [stats],
   );
 
-  const recettesChartData = useMemo(
+  const financesChartData = useMemo(
     () =>
-      stats?.recettes.parMois.map((r) => ({
-        mois: formatMonthLabel(r.mois),
-        Recettes: r.montant,
-      })) || [],
+      stats?.recettes.parMois.map((r) => {
+        const depenses = stats.depenses?.parMois.find((d) => d.mois === r.mois)?.montant || 0;
+        return {
+          mois: formatMonthLabel(r.mois),
+          Recettes: r.montant,
+          Dépenses: depenses,
+          Bénéfice: Math.round((r.montant - depenses) * 1000) / 1000,
+        };
+      }) || [],
     [stats],
   );
+  const totalDepenses = stats?.depenses?.total ?? 0;
+  const benefice = stats?.benefice?.total ?? (stats ? stats.recettes.total - totalDepenses : 0);
 
   const nouveauxPatientsPeriode =
     stats?.patients.parMois.reduce((s, p) => s + p.nouveaux, 0) || 0;
@@ -105,7 +118,7 @@ export function StatisticsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <KpiCard
                 label="Total patients"
                 value={stats.patients.total}
@@ -119,16 +132,29 @@ export function StatisticsPage() {
                 color="bg-emerald-50"
               />
               <KpiCard
+                label="Taux d'absence"
+                value={`${stats.rendezVous.tauxAbsence}%`}
+                icon={<AlertTriangle size={18} className="text-rose-600" />}
+                color="bg-rose-50"
+              />
+              <KpiCard
                 label="Recettes"
                 value={`${formatMoney(stats.recettes.total)} DT`}
                 icon={<TrendingUp size={18} className="text-amber-600" />}
                 color="bg-amber-50"
               />
               <KpiCard
-                label="Taux d'absence"
-                value={`${stats.rendezVous.tauxAbsence}%`}
-                icon={<AlertTriangle size={18} className="text-rose-600" />}
+                label="Dépenses"
+                value={`${formatMoney(totalDepenses)} DT`}
+                icon={<TrendingDown size={18} className="text-rose-600" />}
                 color="bg-rose-50"
+              />
+              <KpiCard
+                label="Bénéfice"
+                value={`${benefice < 0 ? '− ' : ''}${formatMoney(Math.abs(benefice))} DT`}
+                icon={<Wallet size={18} className={benefice < 0 ? 'text-rose-600' : 'text-emerald-600'} />}
+                color={benefice < 0 ? 'bg-rose-50' : 'bg-emerald-50'}
+                valueClassName={benefice < 0 ? 'text-rose-600' : 'text-emerald-700'}
               />
             </div>
 
@@ -165,15 +191,18 @@ export function StatisticsPage() {
             </div>
 
             <div className="card p-5">
-              <h3 className="font-semibold text-sm mb-4">Recettes par mois (DT)</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={recettesChartData}>
+              <h3 className="font-semibold text-sm mb-4">Recettes, dépenses et bénéfice par mois (DT)</h3>
+              <ResponsiveContainer width="100%" height={240}>
+                <ComposedChart data={financesChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   <XAxis dataKey="mois" tick={{ fontSize: 12 }} stroke="#94a3b8" />
                   <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="Recettes" stroke="#0e6ba8" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
+                  <Tooltip formatter={(v: number) => `${formatMoney(v)} DT`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="Recettes" fill="#0e6ba8" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                  <Bar dataKey="Dépenses" fill="#e11d48" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                  <Line type="linear" dataKey="Bénéfice" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 
@@ -218,11 +247,13 @@ function KpiCard({
   value,
   icon,
   color,
+  valueClassName = 'text-slate-900',
 }: {
   label: string;
   value: string | number;
   icon: React.ReactNode;
   color: string;
+  valueClassName?: string;
 }) {
   return (
     <div className="card p-4">
@@ -230,7 +261,7 @@ function KpiCard({
         <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</span>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>{icon}</div>
       </div>
-      <div className="text-2xl font-display font-semibold text-slate-900">{value}</div>
+      <div className={`text-2xl font-display font-semibold ${valueClassName}`}>{value}</div>
     </div>
   );
 }
