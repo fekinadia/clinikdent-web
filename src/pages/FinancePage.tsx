@@ -16,6 +16,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatMoney, formatDateShort } from '@/lib/utils';
 
 const PERIODES = [
+  // "Ce mois" = depuis le 1er du mois en cours, "3 mois" = ce mois + les 2
+  // précédents (ajoutés le 2026-10-09, même calcul côté API).
+  { label: 'Ce mois', value: 1 },
+  { label: '3 mois', value: 3 },
   { label: '6 mois', value: 6 },
   { label: '12 mois', value: 12 },
   { label: '24 mois', value: 24 },
@@ -151,7 +155,7 @@ export function FinancePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <KpiCard
-              label={`Encaissé (${months} mois)`}
+              label={`Encaissé (${months === 1 ? 'ce mois' : `${months} mois`})`}
               value={`${formatMoney(overview?.totalEncaisse || 0)} DT`}
               icon={<TrendingUp size={18} className="text-emerald-600" />}
               color="bg-emerald-50"
