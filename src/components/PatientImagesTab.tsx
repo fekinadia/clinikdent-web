@@ -1,10 +1,66 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Image as ImageIcon, FileText, Trash2, X, Upload } from 'lucide-react';
+import { Plus, Image as ImageIcon, FileText, Trash2, X, Upload, Stethoscope } from 'lucide-react';
+import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { patientImagesApi, PatientImage } from '../api/endpoints';
+import { api } from '../api/client';
 import { formatDate } from '../lib/utils';
 import { compressImage } from '../lib/compressImage';
+
+// Pièces jointes rattachées à une consultation (2026-10-16) : chaque fichier
+// peut être lié à une séance de soins (`treatmentId`), affiché ensuite sous
+// cette consultation dans l'onglet Soins.
+export type PatientImageRow = PatientImage & { treatmentId?: number | null };
+
+export interface ConsultationOption {
+  id: number;
+  date: string; // AAAA-MM-JJ
+  label: string; // « 01/10/26 · Détartrage + … »
+}
+
+interface TreatmentLite {
+  id: number;
+  dateSoin: string;
+  acts: { libelle: string }[];
+}
+
+export function useConsultations(patientId: number): ConsultationOption[] {
+  // Même clé que l'onglet Soins : les données sont partagées en cache.
+  const { data: treatments = [] } = useQuery<TreatmentLite[]>({
+    queryKey: ['treatments', patientId],
+    queryFn: async () => (await api.get(`/patients/${patientId}/treatments`)).data,
+  });
+  return treatments.map((t) => {
+    const actes = t.acts.map((a) => a.libelle).join(' + ');
+    return {
+      id: t.id,
+      date: t.dateSoin.slice(0, 10),
+      label: `${format(new Date(t.dateSoin), 'dd/MM/yy')}${actes ? ` · ${actes}` : ''}`,
+    };
+  });
+}
+
+async function envoyerPieceJointe(
+  patientId: number,
+  file: File,
+  data: { type: string; titre?: string; observation?: string; datePrise?: string; treatmentId?: number | null },
+  onProgress?: (percent: number) => void,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('type', data.type);
+  if (data.titre) formData.append('titre', data.titre);
+  if (data.observation) formData.append('observation', data.observation);
+  if (data.datePrise) formData.append('datePrise', data.datePrise);
+  if (data.treatmentId) formData.append('treatmentId', String(data.treatmentId));
+  await api.post(`/patients/${patientId}/images`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+    },
+  });
+}
 
 interface PatientImagesTabProps {
   patientId: number;
@@ -24,9 +80,21 @@ export function PatientImagesTab({ patientId }: PatientImagesTabProps) {
   const qc = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: images = [], isLoading } = useQuery<PatientImage[]>({
+  const { data: images = [], isLoading } = useQuery<PatientImageRow[]>({
     queryKey: ['patientImages', patientId],
     queryFn: () => patientImagesApi.list(patientId),
+  });
+  const consultations = useConsultations(patientId);
+  const consultationById = new Map(consultations.map((c) => [c.id, c]));
+
+  const linkMutation = useMutation({
+    mutationFn: ({ imageId, treatmentId }: { imageId: number; treatmentId: number | null }) =>
+      api.patch(`/patients/${patientId}/images/${imageId}`, { treatmentId }),
+    onSuccess: (_res, { treatmentId }) => {
+      toast.success(treatmentId ? 'Rattaché à la consultation' : 'Détaché de la consultation');
+      qc.invalidateQueries({ queryKey: ['patientImages', patientId] });
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Impossible de modifier le rattachement'),
   });
 
   const deleteMutation = useMutation({
@@ -122,6 +190,35 @@ export function PatientImagesTab({ patientId }: PatientImagesTabProps) {
                 <div className="text-xs text-slate-500 mt-1">
                   {formatDate(img.datePrise || img.createdAt)}
                 </div>
+                {consultations.length > 0 && (
+                  <label className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                    <Stethoscope size={12} className="flex-shrink-0 text-slate-400" />
+                    <select
+                      value={img.treatmentId ?? ''}
+                      onChange={(e) =>
+                        linkMutation.mutate({
+                          imageId: img.id,
+                          treatmentId: e.target.value ? Number(e.target.value) : null,
+                        })
+                      }
+                      disabled={linkMutation.isPending}
+                      className={`w-full min-w-0 truncate rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs ${
+                        img.treatmentId ? 'text-primary-700' : 'text-slate-400'
+                      }`}
+                      title="Consultation liée"
+                    >
+                      <option value="">Aucune consultation</option>
+                      {consultations.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                      {img.treatmentId && !consultationById.has(img.treatmentId) && (
+                        <option value={img.treatmentId}>Consultation liée</option>
+                      )}
+                    </select>
+                  </label>
+                )}
               </div>
             </div>
           ))}
@@ -129,18 +226,28 @@ export function PatientImagesTab({ patientId }: PatientImagesTabProps) {
       )}
 
       {isDialogOpen && (
-        <UploadImageDialog patientId={patientId} onClose={() => setIsDialogOpen(false)} />
+        <UploadImageDialog
+          patientId={patientId}
+          consultations={consultations}
+          onClose={() => setIsDialogOpen(false)}
+        />
       )}
     </div>
   );
 }
 
-function UploadImageDialog({
+export function UploadImageDialog({
   patientId,
   onClose,
+  consultations = [],
+  defaultTreatmentId,
+  defaultDate,
 }: {
   patientId: number;
   onClose: () => void;
+  consultations?: ConsultationOption[];
+  defaultTreatmentId?: number;
+  defaultDate?: string;
 }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,7 +255,8 @@ function UploadImageDialog({
   const [type, setType] = useState<string>('photo');
   const [titre, setTitre] = useState('');
   const [observation, setObservation] = useState('');
-  const [datePrise, setDatePrise] = useState('');
+  const [datePrise, setDatePrise] = useState(defaultDate || '');
+  const [treatmentId, setTreatmentId] = useState<number | null>(defaultTreatmentId ?? null);
   // Progression affichée sur le bouton (2026-09-27) : l'envoi depuis un
   // téléphone donnait l'impression d'un écran figé sur « Envoi... ».
   const [progress, setProgress] = useState<string | null>(null);
@@ -165,10 +273,10 @@ function UploadImageDialog({
           setProgress(`${prefix}Préparation...`);
           const toSend = await compressImage(files[i], type);
           setProgress(`${prefix}Envoi 0 %`);
-          await patientImagesApi.upload(
+          await envoyerPieceJointe(
             patientId,
             toSend,
-            { type, titre, observation, datePrise },
+            { type, titre, observation, datePrise, treatmentId },
             (p) => setProgress(`${prefix}Envoi ${p} %`),
           );
         } catch {
@@ -230,6 +338,30 @@ function UploadImageDialog({
         </div>
 
         <div className="space-y-3">
+          {consultations.length > 0 && (
+            <div>
+              <label className="label">Consultation (optionnel)</label>
+              <select
+                value={treatmentId ?? ''}
+                onChange={(e) => {
+                  const id = e.target.value ? Number(e.target.value) : null;
+                  setTreatmentId(id);
+                  // La date du fichier suit celle de la consultation, si elle
+                  // n'a pas déjà été saisie.
+                  const c = consultations.find((x) => x.id === id);
+                  if (c && !datePrise) setDatePrise(c.date);
+                }}
+                className="input"
+              >
+                <option value="">Aucune consultation</option>
+                {consultations.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label">Type</label>
             <select value={type} onChange={(e) => setType(e.target.value)} className="input">

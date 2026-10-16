@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Activity, Edit, Banknote, X, Save, Trash2 } from 'lucide-react';
+import { Plus, Activity, Edit, Banknote, X, Save, Trash2, Paperclip, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { api } from '../api/client';
@@ -8,6 +8,15 @@ import { treatmentsApi } from '../api/endpoints';
 import { NewTreatmentDialog } from './NewTreatmentDialog';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
 import { VisitPaymentDialog } from './VisitPaymentDialog';
+import { UploadImageDialog, useConsultations, PatientImageRow } from './PatientImagesTab';
+
+const TYPE_PJ: Record<string, string> = {
+  photo: 'Photo',
+  radio: 'Radio',
+  panoramique: 'Panoramique',
+  scanner: 'Scanner',
+  document: 'Document',
+};
 
 interface TreatmentsTabProps {
   patientId: number;
@@ -46,6 +55,8 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [payingAct, setPayingAct] = useState<TreatmentAct | null>(null);
   const [isGlobalPayOpen, setIsGlobalPayOpen] = useState(false);
+  // Pièces jointes par consultation (2026-10-16).
+  const [attachFor, setAttachFor] = useState<Treatment | null>(null);
   const [isVisitOpen, setIsVisitOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{
@@ -61,6 +72,21 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
       return res.data;
     },
   });
+
+  // Pièces jointes du patient (même cache que l'onglet « Pièces jointes »),
+  // regroupées par consultation pour les afficher sous chaque séance.
+  const { data: patientImages = [] } = useQuery<PatientImageRow[]>({
+    queryKey: ['patientImages', patientId],
+    queryFn: async () => (await api.get(`/patients/${patientId}/images`)).data,
+  });
+  const imagesParSeance = new Map<number, PatientImageRow[]>();
+  for (const img of patientImages) {
+    if (!img.treatmentId) continue;
+    const list = imagesParSeance.get(img.treatmentId) || [];
+    list.push(img);
+    imagesParSeance.set(img.treatmentId, list);
+  }
+  const consultations = useConsultations(patientId);
 
   // Suppressions (2026-10-07) : un acte (avec ses encaissements) ou un seul
   // encaissement. Confirmation obligatoire — action définitive.
@@ -507,6 +533,15 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                               )}
                               {idx === 0 && (
                                 <button
+                                  onClick={() => setAttachFor(treatment)}
+                                  className="text-slate-400 hover:text-primary-600 transition"
+                                  title="Joindre un fichier à cette consultation"
+                                >
+                                  <Paperclip size={14} />
+                                </button>
+                              )}
+                              {idx === 0 && (
+                                <button
                                   onClick={() => startEditing(treatment)}
                                   className="text-slate-400 hover:text-primary-600 transition"
                                   title="Modifier la séance"
@@ -627,6 +662,49 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                         </td>
                       </tr>
                     )}
+
+                    {/* Pièces jointes de la consultation, avec leur date (2026-10-16). */}
+                    {!isEditing && (imagesParSeance.get(treatment.id)?.length ?? 0) > 0 && (
+                      <tr className="border-b border-slate-100 last:border-0 bg-sky-50/40">
+                        <td colSpan={7} className="px-4 py-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="flex items-center gap-1 text-xs font-medium text-slate-500">
+                              <Paperclip size={12} /> Pièces jointes :
+                            </span>
+                            {imagesParSeance.get(treatment.id)!.map((img) => (
+                              <a
+                                key={img.id}
+                                href={img.url || undefined}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white pl-1 pr-2.5 py-1 text-xs hover:border-primary-300 hover:shadow-sm transition"
+                                title={img.observation || img.titre || TYPE_PJ[img.type] || img.type}
+                              >
+                                {img.mimeType?.startsWith('image/') && img.url ? (
+                                  <img src={img.url} alt="" className="w-7 h-7 rounded object-cover" />
+                                ) : (
+                                  <span className="w-7 h-7 rounded bg-slate-100 flex items-center justify-center">
+                                    <FileText size={14} className="text-slate-400" />
+                                  </span>
+                                )}
+                                <span className="text-slate-700 max-w-[160px] truncate">
+                                  {img.titre || TYPE_PJ[img.type] || img.type}
+                                </span>
+                                <span className="text-slate-400">
+                                  {format(new Date(img.datePrise || img.createdAt), 'dd/MM/yy')}
+                                </span>
+                              </a>
+                            ))}
+                            <button
+                              onClick={() => setAttachFor(treatment)}
+                              className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                            >
+                              <Plus size={12} /> Ajouter
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 );
               })}
@@ -653,6 +731,17 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
           patientId={patientId}
           act={payingAct}
           onClose={() => setPayingAct(null)}
+        />
+      )}
+
+      {/* Joindre un fichier à une consultation (2026-10-16) */}
+      {attachFor && (
+        <UploadImageDialog
+          patientId={patientId}
+          consultations={consultations}
+          defaultTreatmentId={attachFor.id}
+          defaultDate={attachFor.dateSoin.slice(0, 10)}
+          onClose={() => setAttachFor(null)}
         />
       )}
 
