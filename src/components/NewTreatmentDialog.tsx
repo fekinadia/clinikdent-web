@@ -160,6 +160,9 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
       if (validActs.length === 0) {
         throw new Error("Ajoutez au moins un acte");
       }
+      if (validActs.some((a) => Number(a.montantRecu) > Number(a.cout) + 0.005)) {
+        throw new Error('Le montant payé ne peut pas dépasser le total');
+      }
       return api.post('/treatments', {
         patientId,
         dateSoin,
@@ -204,19 +207,31 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   // Nadia, 2026-09-30) : Total = Payé + Reste doit toujours rester vrai,
   // donc modifier l'un des trois recalcule automatiquement l'un des deux
   // autres plutôt que de forcer un seul champ "maître" à saisir.
-  //   - Payé change  → Reste = Total - Payé (Total ne bouge pas)
+  //   - Payé change  → Reste = Total - Payé (Total ne bouge pas) ; si le
+  //     Payé dépasse le Total (ex. Total pas encore saisi), le Total monte au
+  //     niveau du Payé et le Reste vaut 0
   //   - Total change → Reste = Total - Payé (Payé ne bouge pas)
   //   - Reste change → Total = Payé + Reste (Payé ne bouge pas)
+  // Le Reste n'est JAMAIS négatif (2026-10-16, signalé par Nadia : « -50 »).
+  // Si le Total saisi est inférieur au Payé, le Reste reste à 0 et la ligne
+  // est signalée en erreur (enregistrement bloqué) plutôt que de modifier le
+  // Payé pendant la frappe.
   const updateActAmount = (index: number, field: 'montantRecu' | 'cout' | 'reste', value: number) => {
     setActs((prev) => {
       const updated = [...prev];
-      const row = { ...updated[index], [field]: value };
+      const v = Math.max(0, value);
+      const row = { ...updated[index], [field]: v };
       if (field === 'montantRecu') {
-        row.reste = Number(row.cout) - value;
+        if (v > Number(row.cout)) {
+          row.cout = v;
+          row.reste = 0;
+        } else {
+          row.reste = Number(row.cout) - v;
+        }
       } else if (field === 'cout') {
-        row.reste = value - Number(row.montantRecu);
+        row.reste = Math.max(0, v - Number(row.montantRecu));
       } else {
-        row.cout = Number(row.montantRecu) + value;
+        row.cout = Number(row.montantRecu) + v;
       }
       updated[index] = row;
       return updated;
@@ -260,7 +275,11 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
 
   const totalPaid = acts.reduce((sum, a) => sum + (Number(a.montantRecu) || 0), 0);
   const totalCost = acts.reduce((sum, a) => sum + (Number(a.cout) || 0), 0);
-  const totalDue = totalCost - totalPaid;
+  const totalDue = Math.max(0, totalCost - totalPaid);
+  // Lignes où le Payé dépasse le Total (Total corrigé à la baisse après coup).
+  const lignesDepassement = acts
+    .map((a, i) => (Number(a.montantRecu) > Number(a.cout) + 0.005 ? i + 1 : 0))
+    .filter(Boolean);
 
   if (!isOpen) return null;
 
@@ -456,7 +475,16 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
                           value={act.cout || ''}
                           onChange={(e) => updateActAmount(index, 'cout', parseFloat(e.target.value) || 0)}
                           placeholder="0"
-                          className="input py-1.5 text-sm w-24 text-right"
+                          className={`input py-1.5 text-sm w-24 text-right ${
+                            Number(act.montantRecu) > Number(act.cout) + 0.005
+                              ? '!border-rose-500 ring-1 ring-rose-300 text-rose-600'
+                              : ''
+                          }`}
+                          title={
+                            Number(act.montantRecu) > Number(act.cout) + 0.005
+                              ? 'Le total doit être au moins égal au montant payé'
+                              : undefined
+                          }
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -503,6 +531,13 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
             <p className="sm:hidden text-xs text-slate-400 mt-1.5 text-center">
               ← Faites glisser le tableau pour voir Payé / Total / Reste / Mode →
             </p>
+            {lignesDepassement.length > 0 && (
+              <p className="text-xs text-rose-600 mt-2">
+                Le montant payé dépasse le total
+                {acts.length > 1 ? ` (ligne ${lignesDepassement.join(', ')})` : ''} : corrigez le total
+                ou le payé avant d'enregistrer.
+              </p>
+            )}
           </div>
 
           <div>
@@ -548,7 +583,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
           </button>
           <button
             onClick={() => createTreatment.mutate()}
-            disabled={createTreatment.isPending}
+            disabled={createTreatment.isPending || lignesDepassement.length > 0}
             className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition flex items-center gap-2 disabled:opacity-50"
             style={{ backgroundColor: '#0e6ba8' }}
           >
