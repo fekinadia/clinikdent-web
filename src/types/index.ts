@@ -150,6 +150,13 @@ export interface Medication {
   dosage?: string;
   forme?: string;
   posologieDefaut?: string;
+  // Page "Médicaments" (2026-10-02) : présent uniquement sur les réponses
+  // de medicationsApi.list (nombre de prescriptions dans CE cabinet).
+  nbPrescriptions?: number;
+  // Présent sur la page "Médicaments" (2026-10-16) : true seulement pour les
+  // médicaments ajoutés par ce cabinet. Le catalogue commun est en lecture
+  // seule (modifiable: false).
+  modifiable?: boolean;
 }
 
 export interface PrescriptionItem {
