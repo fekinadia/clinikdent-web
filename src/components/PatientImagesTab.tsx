@@ -41,7 +41,9 @@ export function useConsultations(patientId: number): ConsultationOption[] {
   });
 }
 
-async function envoyerPieceJointe(
+// Exporté (2026-10-16) : aussi utilisé par « Nouveau soin » pour joindre des
+// fichiers au moment où la consultation est enregistrée.
+export async function envoyerPieceJointe(
   patientId: number,
   file: File,
   data: { type: string; titre?: string; observation?: string; datePrise?: string; treatmentId?: number | null },
@@ -74,7 +76,7 @@ const TYPE_LABELS: Record<string, string> = {
   document: 'Document',
 };
 
-const TYPE_OPTIONS = Object.entries(TYPE_LABELS);
+export const TYPE_OPTIONS = Object.entries(TYPE_LABELS);
 
 export function PatientImagesTab({ patientId }: PatientImagesTabProps) {
   const qc = useQueryClient();

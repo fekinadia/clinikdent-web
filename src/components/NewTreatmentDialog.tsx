@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Save, Plus, Trash2, ChevronDown } from 'lucide-react';
+import { X, Save, Plus, Trash2, ChevronDown, Paperclip, FileText, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../api/client';
+import { compressImage } from '../lib/compressImage';
+import { envoyerPieceJointe, TYPE_OPTIONS } from './PatientImagesTab';
+
+function tailleLisible(octets: number) {
+  if (octets < 1024 * 1024) return `${Math.max(1, Math.round(octets / 1024))} Ko`;
+  return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
+}
 
 interface NewTreatmentDialogProps {
   patientId: number;
@@ -71,6 +78,14 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
   const [dateSoin, setDateSoin] = useState(new Date().toISOString().split('T')[0]);
   const [observations, setObservations] = useState('');
   const [acts, setActs] = useState<TreatmentAct[]>([emptyAct()]);
+  // Pièces jointes de la consultation (2026-10-16) : envoyées juste après
+  // l'enregistrement du soin, rattachées à cette séance et datées du jour du
+  // soin. Un échec d'envoi n'annule pas le soin (déjà enregistré) : on le
+  // signale, et le fichier peut être rajouté avec le trombone de la séance.
+  const [pjFiles, setPjFiles] = useState<File[]>([]);
+  const [pjType, setPjType] = useState('radio');
+  const [pjProgress, setPjProgress] = useState<string | null>(null);
+  const pjInputRef = useRef<HTMLInputElement | null>(null);
 
   // Popover "actes courants" (sélection multiple) ouvert pour la ligne
   // d'index `openActsMenu`, ou aucun si null. Un seul ouvert à la fois.
@@ -163,24 +178,71 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
       if (validActs.some((a) => Number(a.montantRecu) > Number(a.cout) + 0.005)) {
         throw new Error('Le montant payé ne peut pas dépasser le total');
       }
-      return api.post('/treatments', {
+      const res = await api.post('/treatments', {
         patientId,
         dateSoin,
         observations: observations || undefined,
         acts: validActs,
       });
+
+      // Le soin est enregistré : à partir d'ici, plus aucune erreur ne doit
+      // remonter (sinon un nouveau clic créerait un soin en double).
+      const treatmentId: number | undefined = res?.data?.id;
+      let pjEchecs = 0;
+      if (treatmentId && pjFiles.length > 0) {
+        for (let i = 0; i < pjFiles.length; i++) {
+          const prefix = pjFiles.length > 1 ? `${i + 1}/${pjFiles.length} · ` : '';
+          try {
+            setPjProgress(`${prefix}Préparation...`);
+            const toSend = await compressImage(pjFiles[i], pjType);
+            setPjProgress(`${prefix}Envoi 0 %`);
+            await envoyerPieceJointe(
+              patientId,
+              toSend,
+              {
+                type: pjType,
+                // Nom du fichier (sans extension) comme titre : c'est ce qui
+                // s'affiche sous la consultation dans l'onglet Soins.
+                titre: pjFiles[i].name.replace(/\.[^.]+$/, '').slice(0, 150) || undefined,
+                datePrise: dateSoin,
+                treatmentId,
+              },
+              (p) => setPjProgress(`${prefix}Envoi ${p} %`),
+            );
+          } catch {
+            pjEchecs++;
+          }
+        }
+        setPjProgress(null);
+      }
+      return { pjTotal: treatmentId ? pjFiles.length : 0, pjEchecs };
     },
-    onSuccess: () => {
-      toast.success('Soin enregistré avec succès !');
+    onSuccess: ({ pjTotal, pjEchecs }: { pjTotal: number; pjEchecs: number }) => {
+      if (pjEchecs > 0) {
+        toast.error(
+          `Soin enregistré, mais ${pjEchecs} pièce(s) jointe(s) sur ${pjTotal} non envoyée(s). ` +
+            'Vous pouvez les rajouter avec le trombone de la consultation.',
+          { duration: 7000 },
+        );
+      } else {
+        toast.success(
+          pjTotal > 0
+            ? `Soin enregistré avec ${pjTotal} pièce${pjTotal > 1 ? 's' : ''} jointe${pjTotal > 1 ? 's' : ''} !`
+            : 'Soin enregistré avec succès !',
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['treatments', patientId] });
       queryClient.invalidateQueries({ queryKey: ['finSummary', patientId] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary', patientId] });
+      if (pjTotal > 0) queryClient.invalidateQueries({ queryKey: ['patientImages', patientId] });
       onClose();
       setDateSoin(new Date().toISOString().split('T')[0]);
       setObservations('');
       setActs([emptyAct()]);
+      setPjFiles([]);
     },
     onError: (error: any) => {
+      setPjProgress(null);
       const msg = error?.response?.data?.message || error?.message || "Erreur lors de la création";
       toast.error(msg);
     },
@@ -553,6 +615,78 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
             />
           </div>
 
+          {/* Pièces jointes de la consultation (2026-10-16) */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Pièces jointes (optionnel)
+            </label>
+            <input
+              ref={pjInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const ajout = Array.from(e.target.files || []);
+                if (ajout.length > 0) setPjFiles((prev) => [...prev, ...ajout]);
+                // Permet de re-choisir le même fichier après l'avoir retiré.
+                e.target.value = '';
+              }}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => pjInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-200 rounded-lg text-sm text-slate-600 hover:border-primary-300 hover:text-primary-700 transition"
+              >
+                <Paperclip className="w-4 h-4" />
+                {pjFiles.length > 0 ? 'Ajouter un autre fichier' : 'Joindre une radio, une photo ou un document'}
+              </button>
+              {pjFiles.length > 0 && (
+                <select
+                  value={pjType}
+                  onChange={(e) => setPjType(e.target.value)}
+                  className="px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                  aria-label="Type de pièce jointe"
+                >
+                  {TYPE_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {pjFiles.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {pjFiles.map((f, i) => (
+                  <li
+                    key={`${f.name}-${i}`}
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  >
+                    {f.type.startsWith('image/') ? (
+                      <ImageIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                    )}
+                    <span className="flex-1 min-w-0 truncate text-slate-700">{f.name}</span>
+                    <span className="text-xs text-slate-400 shrink-0">{tailleLisible(f.size)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPjFiles((prev) => prev.filter((_, j) => j !== i))}
+                      className="p-1 text-slate-400 hover:text-rose-600 transition"
+                      aria-label={`Retirer ${f.name}`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-slate-400 mt-1.5">
+              Rattachées à cette consultation, à la date du soin. 15 Mo max par fichier.
+            </p>
+          </div>
+
           <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-xl p-4">
             <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Résumé</h3>
             <div className="grid grid-cols-3 gap-4">
@@ -588,7 +722,7 @@ export function NewTreatmentDialog({ patientId, isOpen, onClose }: NewTreatmentD
             style={{ backgroundColor: '#0e6ba8' }}
           >
             <Save className="w-4 h-4" />
-            {createTreatment.isPending ? 'Enregistrement...' : 'Enregistrer le soin'}
+            {createTreatment.isPending ? pjProgress || 'Enregistrement...' : 'Enregistrer le soin'}
           </button>
         </div>
       </div>
