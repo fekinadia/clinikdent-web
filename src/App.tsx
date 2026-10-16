@@ -35,6 +35,7 @@ const AutomationHistoryPage = lazy(() => import('@/pages/automation/AutomationHi
 const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage').then((m) => ({ default: m.SubscriptionPage })));
 const StatisticsPage = lazy(() => import('@/pages/StatisticsPage').then((m) => ({ default: m.StatisticsPage })));
 const PrescriptionsPage = lazy(() => import('@/pages/PrescriptionsPage').then((m) => ({ default: m.PrescriptionsPage })));
+const MedicationsPage = lazy(() => import('@/pages/MedicationsPage').then((m) => ({ default: m.MedicationsPage })));
 const DocumentsPage = lazy(() => import('@/pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
 const TreatmentsPage = lazy(() => import('@/pages/PlaceholderPages').then((m) => ({ default: m.TreatmentsPage })));
 const SettingsPage = lazy(() => import('@/pages/PlaceholderPages').then((m) => ({ default: m.SettingsPage })));
@@ -98,6 +99,7 @@ export function App() {
               <Route path="automatisation/historique" element={<AutomationHistoryPage />} />
               <Route path="treatments" element={<TreatmentsPage />} />
               <Route path="prescriptions" element={<PrescriptionsPage />} />
+              <Route path="medicaments" element={<MedicationsPage />} />
             <Route path="documents" element={<DocumentsPage />} />
               <Route path="finance" element={<FinancePage />} />
               <Route path="expenses" element={<ExpensesPage />} />
