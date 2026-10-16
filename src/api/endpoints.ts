@@ -185,6 +185,31 @@ export const prescriptionsApi = {
     api.delete(`/prescription-modeles/${id}`).then((r) => r.data),
 };
 
+// ===== MÉDICAMENTS (page "Médicaments", 2026-10-02) =====
+// Catalogue commun (lecture seule) + médicaments propres au cabinet
+// (modifiables, `modifiable: true`), avec compteur "Prescrit" filtré par
+// cabinet côté API — voir prescriptionsApi.medications pour la recherche
+// rapide (autocomplete) utilisée dans le formulaire d'ordonnance.
+export const medicationsApi = {
+  list: (params?: { search?: string; page?: number; limit?: number }) =>
+    api
+      .get<{ items: Medication[]; total: number; page: number; pageCount: number }>(
+        '/medications/catalog',
+        { params },
+      )
+      .then((r) => r.data),
+
+  create: (data: { nom: string; dosage?: string; forme?: string; posologieDefaut?: string }) =>
+    api.post<Medication>('/medications', data).then((r) => r.data),
+
+  update: (
+    id: number,
+    data: { nom?: string; dosage?: string; forme?: string; posologieDefaut?: string },
+  ) => api.patch<Medication>(`/medications/${id}`, data).then((r) => r.data),
+
+  remove: (id: number) => api.delete(`/medications/${id}`).then((r) => r.data),
+};
+
 // ===== PATIENT IMAGES (photos, radios, scans) =====
 export interface PatientImage {
   id: number;
