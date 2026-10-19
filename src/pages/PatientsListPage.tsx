@@ -59,7 +59,7 @@ export function PatientsListPage() {
                 type="text"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Rechercher par nom, GSM, dossier..."
+                placeholder="Rechercher par nom, GSM, dossier, date de naissance (13/01/1990, 13 jan)..."
                 className="input pl-9"
               />
             </div>
