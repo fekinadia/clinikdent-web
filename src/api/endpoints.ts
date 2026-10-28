@@ -60,6 +60,12 @@ export const patientsApi = {
   update: (id: number, data: Partial<Patient>) =>
     api.patch<Patient>(`/patients/${id}`, data).then((r) => r.data),
 
+  // Rappels WhatsApp (2026-10-23) : sans retirer le statut prospect (contrairement à update).
+  updateLangueMessages: (id: number, langueMessages: 'fr' | 'ar') =>
+    api
+      .patch<{ id: number; langueMessages: 'fr' | 'ar' }>(`/patients/${id}/langue-messages`, { langueMessages })
+      .then((r) => r.data),
+
   delete: (id: number) => api.delete(`/patients/${id}`).then((r) => r.data),
 
   stats: () => api.get<{ total: number; ceMois: number }>('/patients/stats').then((r) => r.data),
@@ -96,6 +102,36 @@ export const appointmentsApi = {
   // création automatique de la relance de récupération.
   markNoShow: (id: number) =>
     api.post<Appointment>(`/appointments/${id}/no-show`).then((r) => r.data),
+};
+
+// ===== RAPPELS WHATSAPP « EN UN GESTE » (2026-10-23) =====
+export interface RappelAppointment {
+  id: number;
+  dateDebut: string;
+  dateFin: string;
+  statut: string;
+  rappelEnvoye: boolean;
+  rappelEnvoyeAt: string | null;
+  patient: { id: number; nom: string; prenom: string; gsm?: string | null; langueMessages: 'fr' | 'ar' };
+  type?: { id: number; libelle: string } | null;
+  medecin?: { id: number; nom: string; prenom: string } | null;
+  rappelEnvoyeParUser?: { id: number; nom: string; prenom: string } | null;
+}
+
+export const rappelsApi = {
+  // Bornes calculées dans le navigateur (heure du cabinet), le serveur étant en UTC.
+  list: (debut: Date, fin: Date) =>
+    api
+      .get<RappelAppointment[]>('/appointments/rappels', {
+        params: { debut: debut.toISOString(), fin: fin.toISOString() },
+      })
+      .then((r) => r.data),
+
+  marquer: (id: number) =>
+    api.post<RappelAppointment>(`/appointments/${id}/rappel`).then((r) => r.data),
+
+  annuler: (id: number) =>
+    api.delete<RappelAppointment>(`/appointments/${id}/rappel`).then((r) => r.data),
 };
 
 // ===== CALENDAR EVENTS (agenda sans patient) =====
@@ -397,6 +433,8 @@ export interface WhatsAppTemplate {
   type: 'reminder' | 'recall' | 'no_show';
   nom: string;
   contenu: string;
+  // Rappels WhatsApp (2026-10-23) : langue du modèle.
+  langue: 'fr' | 'ar';
   statutApprobation: 'brouillon' | 'en_attente' | 'approuve' | 'rejete';
   metaTemplateName: string | null;
   createdAt: string;
@@ -405,9 +443,9 @@ export interface WhatsAppTemplate {
 export const whatsappApi = {
   listTemplates: (type?: WhatsAppTemplate['type']) =>
     api.get<WhatsAppTemplate[]>('/whatsapp-templates', { params: { type } }).then((r) => r.data),
-  createTemplate: (data: { type: WhatsAppTemplate['type']; nom: string; contenu: string }) =>
+  createTemplate: (data: { type: WhatsAppTemplate['type']; nom: string; contenu: string; langue: WhatsAppTemplate['langue'] }) =>
     api.post<WhatsAppTemplate>('/whatsapp-templates', data).then((r) => r.data),
-  updateTemplate: (id: number, data: Partial<{ nom: string; contenu: string; type: WhatsAppTemplate['type'] }>) =>
+  updateTemplate: (id: number, data: Partial<{ nom: string; contenu: string; type: WhatsAppTemplate['type']; langue: WhatsAppTemplate['langue'] }>) =>
     api.patch<WhatsAppTemplate>(`/whatsapp-templates/${id}`, data).then((r) => r.data),
   deleteTemplate: (id: number) => api.delete(`/whatsapp-templates/${id}`).then((r) => r.data),
 };

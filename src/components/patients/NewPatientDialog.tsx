@@ -16,7 +16,7 @@ export function NewPatientDialog({ open, onClose }: Props) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     numeroDossier: '', nom: '', prenom: '', dateNaissance: '', sexe: 'F' as 'M' | 'F',
-    gsm: '', ville: '', reseauSocial: '',
+    gsm: '', ville: '', reseauSocial: '', langueMessages: 'fr' as 'fr' | 'ar',
   });
 
   const mutation = useMutation({
@@ -96,10 +96,20 @@ export function NewPatientDialog({ open, onClose }: Props) {
             </div>
           </div>
 
-          <div>
-            <label className="label">GSM</label>
-            <input className="input" placeholder="22 000 800" value={form.gsm}
-              onChange={(e) => setForm({ ...form, gsm: e.target.value })} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">GSM</label>
+              <input className="input" placeholder="22 000 800" value={form.gsm}
+                onChange={(e) => setForm({ ...form, gsm: e.target.value })} />
+            </div>
+            <div>
+              <label className="label" htmlFor="new-patient-langue">Langue des messages</label>
+              <select id="new-patient-langue" className="input" value={form.langueMessages}
+                onChange={(e) => setForm({ ...form, langueMessages: e.target.value as 'fr' | 'ar' })}>
+                <option value="fr">Français</option>
+                <option value="ar">العربية (arabe)</option>
+              </select>
+            </div>
           </div>
 
           <div>
