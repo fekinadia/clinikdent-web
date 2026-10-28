@@ -35,6 +35,8 @@ export interface Patient {
   antecedents?: string;
   photoUrl?: string;
   reseauSocial?: string;
+  // Rappels WhatsApp (2026-10-23) : langue des messages envoyés au patient.
+  langueMessages?: 'fr' | 'ar';
   estProspect?: boolean;
   createdAt: string;
   updatedAt: string;

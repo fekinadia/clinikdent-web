@@ -121,6 +121,12 @@ export function AutomationRecallsPage() {
             </button>
           </div>
 
+          {/* Fin du faux « Envoyé » (2026-10-24) : sans envoi WhatsApp branché, un recall échu passe à « Dû ». */}
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+            L'envoi WhatsApp automatique n'est pas encore disponible. Quand sa date d'échéance arrive, un recall
+            passe en « Dû » : contactez vous-même le patient. « Envoyé » n'apparaît que si le message est vraiment parti.
+          </p>
+
           <div className="flex gap-2 mb-4 flex-wrap">
             {FILTER_OPTIONS.map((opt) => (
               <button
