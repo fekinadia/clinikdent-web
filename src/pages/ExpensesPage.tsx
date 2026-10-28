@@ -387,7 +387,8 @@ function ExpenseDialog({
 }
 
 export function ExpensesPage() {
-  const [months, setMonths] = useState(12);
+  // « Ce mois » par défaut (demande de Nadia, 2026-10-28) ; avant : 12 mois.
+  const [months, setMonths] = useState(1);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [categorieFilter, setCategorieFilter] = useState('');
