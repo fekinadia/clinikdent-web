@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { Plus, X, Pencil, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
@@ -28,8 +27,7 @@ const TYPE_LABELS: Record<WhatsAppTemplate['type'], string> = {
 
 const RECALL_MONTHS_OPTIONS = [1, 3, 6, 12];
 
-// {{adresse}} et {{carte}} (lien Google Maps) ajoutés pour les rappels WhatsApp (2026-10-23).
-const TEMPLATE_VARIABLES = ['{{prenom}}', '{{nom}}', '{{cabinet}}', '{{dentiste}}', '{{date}}', '{{heure}}', '{{traitement}}', '{{periode}}', '{{adresse}}', '{{carte}}'];
+const TEMPLATE_VARIABLES = ['{{prenom}}', '{{nom}}', '{{cabinet}}', '{{dentiste}}', '{{date}}', '{{heure}}', '{{traitement}}', '{{periode}}'];
 
 export function AutomationWhatsAppPage() {
   const qc = useQueryClient();
@@ -94,7 +92,6 @@ export function AutomationWhatsAppPage() {
   const [formType, setFormType] = useState<WhatsAppTemplate['type']>('reminder');
   const [formNom, setFormNom] = useState('');
   const [formContenu, setFormContenu] = useState('');
-  const [formLangue, setFormLangue] = useState<WhatsAppTemplate['langue']>('fr');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   function openCreateModal() {
@@ -102,7 +99,6 @@ export function AutomationWhatsAppPage() {
     setFormType('reminder');
     setFormNom('');
     setFormContenu('');
-    setFormLangue('fr');
     setIsModalOpen(true);
   }
 
@@ -111,13 +107,11 @@ export function AutomationWhatsAppPage() {
     setFormType(template.type);
     setFormNom(template.nom);
     setFormContenu(template.contenu);
-    setFormLangue(template.langue ?? 'fr');
     setIsModalOpen(true);
   }
 
   const createMutation = useMutation({
-    mutationFn: (data: { type: WhatsAppTemplate['type']; nom: string; contenu: string; langue: WhatsAppTemplate['langue'] }) =>
-      whatsappApi.createTemplate(data),
+    mutationFn: (data: { type: WhatsAppTemplate['type']; nom: string; contenu: string }) => whatsappApi.createTemplate(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['whatsapp-templates'] });
       toast.success('Template créé');
@@ -127,7 +121,7 @@ export function AutomationWhatsAppPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<{ nom: string; contenu: string; type: WhatsAppTemplate['type']; langue: WhatsAppTemplate['langue'] }> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<{ nom: string; contenu: string; type: WhatsAppTemplate['type'] }> }) =>
       whatsappApi.updateTemplate(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['whatsapp-templates'] });
@@ -150,9 +144,9 @@ export function AutomationWhatsAppPage() {
   function handleSubmitTemplate() {
     if (!formNom || !formContenu) return;
     if (editingTemplate) {
-      updateMutation.mutate({ id: editingTemplate.id, data: { type: formType, nom: formNom, contenu: formContenu, langue: formLangue } });
+      updateMutation.mutate({ id: editingTemplate.id, data: { type: formType, nom: formNom, contenu: formContenu } });
     } else {
-      createMutation.mutate({ type: formType, nom: formNom, contenu: formContenu, langue: formLangue });
+      createMutation.mutate({ type: formType, nom: formNom, contenu: formContenu });
     }
   }
 
@@ -173,15 +167,6 @@ export function AutomationWhatsAppPage() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <section className="card p-6">
           <h2 className="text-base font-semibold text-slate-900 mb-4">Paramètres d'automatisation</h2>
-
-          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
-            L'envoi WhatsApp 100 % automatique n'est pas encore disponible. En attendant, envoyez les rappels
-            en un geste depuis{' '}
-            <Link to="/automatisation/rappels" className="font-medium underline">
-              Automatisation › Rappels
-            </Link>
-            .
-          </p>
 
           {settingsLoading ? (
             <p className="text-sm text-slate-500">Chargement...</p>
@@ -323,12 +308,8 @@ export function AutomationWhatsAppPage() {
                           <span className="font-medium text-sm text-slate-900">{template.nom}</span>
                           <span className={clsx('badge', badge.className)}>{badge.label}</span>
                           <span className="text-xs text-slate-400">{TYPE_LABELS[template.type]}</span>
-                          <span className="badge badge-neutral">{template.langue === 'ar' ? 'ع arabe' : 'FR'}</span>
                         </div>
-                        <div
-                          dir={template.langue === 'ar' ? 'rtl' : 'ltr'}
-                          className="text-sm text-slate-500 mt-2 whitespace-pre-wrap max-h-20 overflow-y-auto"
-                        >
+                        <div className="text-sm text-slate-500 mt-2 whitespace-pre-wrap max-h-20 overflow-y-auto">
                           {template.contenu}
                         </div>
                       </div>
@@ -383,23 +364,6 @@ export function AutomationWhatsAppPage() {
                 </select>
               </div>
               <div>
-                <label className="label" htmlFor="template-langue">Langue</label>
-                <select
-                  id="template-langue"
-                  className="input"
-                  value={formLangue}
-                  onChange={(e) => setFormLangue(e.target.value as WhatsAppTemplate['langue'])}
-                >
-                  <option value="fr">Français</option>
-                  <option value="ar">العربية (arabe)</option>
-                </select>
-                {formType === 'reminder' && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    La page Rappels utilise le modèle « Rappel de rendez-vous » le plus récent dans la langue du patient.
-                  </p>
-                )}
-              </div>
-              <div>
                 <label className="label">Nom</label>
                 <input
                   type="text"
@@ -412,7 +376,6 @@ export function AutomationWhatsAppPage() {
               <div>
                 <label className="label">Contenu</label>
                 <textarea
-                  dir={formLangue === 'ar' ? 'rtl' : 'ltr'}
                   className="input"
                   rows={5}
                   value={formContenu}

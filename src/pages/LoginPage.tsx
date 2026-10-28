@@ -27,7 +27,7 @@ export function LoginPage() {
   });
 
   return (
-    <main className="min-h-screen flex">
+    <div className="min-h-screen flex">
       {/* Visuel */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary-700 via-primary-500 to-accent-500 items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-20" style={{
@@ -78,12 +78,9 @@ export function LoginPage() {
             className="space-y-4 mt-8"
           >
             <div>
-              <label htmlFor="login-email" className="label">Email</label>
+              <label className="label">Email</label>
               <input
-                id="login-email"
-                name="email"
                 type="email"
-                autoComplete="username"
                 className="input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -91,13 +88,10 @@ export function LoginPage() {
               />
             </div>
             <div>
-              <label htmlFor="login-password" className="label">Mot de passe</label>
+              <label className="label">Mot de passe</label>
               <div className="relative">
                 <input
-                  id="login-password"
-                  name="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
                   className="input pr-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -106,10 +100,9 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 rounded-r-md text-slate-500 hover:text-slate-700"
-                  aria-label="Afficher le mot de passe"
-                  aria-pressed={showPassword}
-                  aria-controls="login-password"
+                  tabIndex={-1}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -128,6 +121,6 @@ export function LoginPage() {
 
         </div>
       </div>
-    </main>
+    </div>
   );
 }

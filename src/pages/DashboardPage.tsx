@@ -1,13 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Calendar, TrendingUp, Armchair, ArrowRight, Wallet, ChevronRight, MessageCircle } from 'lucide-react';
+import { Users, Calendar, TrendingUp, Armchair, ArrowRight, Wallet, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { patientsApi, appointmentsApi, rappelsApi } from '@/api/endpoints';
+import { patientsApi, appointmentsApi } from '@/api/endpoints';
 import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
-import { useAuthStore } from '@/lib/auth-store';
 import { formatTime } from '@/lib/utils';
-import { bornesJournee } from '@/lib/whatsappRappel';
 
 const STATUT_STYLE: Record<string, { border: string; bg: string; text: string; label: string }> = {
   planifie: { border: '#94a3b8', bg: '#94a3b81a', text: '#475569', label: 'Planifié' },
@@ -45,8 +43,6 @@ export function DashboardPage() {
       </header>
 
       <div className="flex-1 overflow-auto p-6 animate-fade-in">
-        <RappelsAFaireBanner />
-
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard
@@ -149,42 +145,6 @@ export function DashboardPage() {
         </div>
       </div>
     </>
-  );
-}
-
-// Rappels WhatsApp (2026-10-23) : à partir de 17 h, rappelle combien de
-// patients de demain n'ont pas encore reçu leur rappel.
-const HEURE_BANDEAU_RAPPELS = 17;
-
-function RappelsAFaireBanner() {
-  const role = useAuthStore((s) => s.user?.role);
-  const actif = role !== 'comptable' && new Date().getHours() >= HEURE_BANDEAU_RAPPELS;
-  const demain = new Date();
-  demain.setDate(demain.getDate() + 1);
-  const { debut, fin } = bornesJournee(demain);
-
-  const { data: rdvs } = useQuery({
-    queryKey: ['rappels-a-faire', debut.toISOString()],
-    queryFn: () => rappelsApi.list(debut, fin),
-    enabled: actif,
-  });
-
-  const restants = rdvs?.filter((r) => r.patient.gsm && !r.rappelEnvoye).length ?? 0;
-  if (!actif || restants === 0) return null;
-
-  return (
-    <Link
-      to="/automatisation/rappels"
-      className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 hover:bg-emerald-100 transition-colors"
-    >
-      <MessageCircle size={18} className="text-emerald-600 shrink-0" />
-      <span className="flex-1">
-        <strong>{restants} patient{restants > 1 ? 's' : ''}</strong> à rappeler sur WhatsApp pour demain
-      </span>
-      <span className="inline-flex items-center gap-1 font-medium">
-        Ouvrir les rappels <ArrowRight size={14} />
-      </span>
-    </Link>
   );
 }
 

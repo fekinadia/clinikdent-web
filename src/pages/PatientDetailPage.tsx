@@ -16,7 +16,6 @@ import { patientsApi, treatmentsApi } from '@/api/endpoints';
 import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
 import { ToothChart } from '@/components/patients/ToothChart';
-import { EncaissementsJournal } from '@/components/patients/EncaissementsJournal';
 import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/utils';
 
 // Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
@@ -225,7 +224,6 @@ function patientToFormState(patient: any) {
     assurance: patient.assurance || '',
     antecedents: patient.antecedents || '',
     reseauSocial: patient.reseauSocial || '',
-    langueMessages: (patient.langueMessages === 'ar' ? 'ar' : 'fr') as 'fr' | 'ar',
   };
 }
 
@@ -272,7 +270,6 @@ function IdentiteTab({ patient }: { patient: any }) {
           <Field label="Date de naissance" value={formatDate(patient.dateNaissance)} />
           <Field label="Sexe" value={patient.sexe === 'F' ? 'Femme' : 'Homme'} />
           <Field label="GSM" value={patient.gsm} />
-          <Field label="Langue des messages" value={patient.langueMessages === 'ar' ? 'العربية (arabe)' : 'Français'} />
           <Field label="Email" value={patient.email} />
           <Field label="Réseau social" value={patient.reseauSocial} />
           <Field label="Adresse" value={patient.adresse} full />
@@ -320,14 +317,6 @@ function IdentiteTab({ patient }: { patient: any }) {
           <label className="label">GSM</label>
           <input className="input" value={form.gsm}
             onChange={(e) => setForm({ ...form, gsm: e.target.value })} />
-        </div>
-        <div>
-          <label className="label" htmlFor="patient-langue-messages">Langue des messages</label>
-          <select id="patient-langue-messages" className="input" value={form.langueMessages}
-            onChange={(e) => setForm({ ...form, langueMessages: e.target.value as 'fr' | 'ar' })}>
-            <option value="fr">Français</option>
-            <option value="ar">العربية (arabe)</option>
-          </select>
         </div>
         <div>
           <label className="label">Email</label>
@@ -419,9 +408,6 @@ function FinanceTab({ summary, treatments, patientId }: { summary?: any; treatme
           value={summary.reste}
         />
       </div>
-
-      {/* Journal des encaissements par date (2026-10-28) : le tableau des soins reste en dessous. */}
-      <EncaissementsJournal treatments={treatments} />
 
       <TreatmentsTab patientId={patientId} />
     </div>

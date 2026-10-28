@@ -7,16 +7,7 @@
     @apply font-sans text-slate-900 antialiased;
     background-color: #f4f6f8;
   }
-  /* Accessibilité (2026-10-19) : contour visible pour la navigation au clavier
-     (rien ne change au clic souris). Les champs et éléments qui ont déjà leur
-     propre style de focus (.input, classes focus:ring-*) le gardent tel quel. */
-  :focus:not(:focus-visible) { outline: none; }
-  :focus-visible {
-    outline: 2px solid theme('colors.primary.500');
-    outline-offset: 2px;
-  }
-  .input:focus-visible,
-  [class*="focus:ring"]:focus-visible { outline: none; }
+  *:focus { outline: none; }
 }
 
 @layer components {
