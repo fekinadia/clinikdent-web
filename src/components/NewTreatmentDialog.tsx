@@ -43,7 +43,9 @@ const COMMON_ACTS = [
   'Détartrage',
   'Obturation (composite)',
   'Extraction simple',
-  'Biopulpectomie + Obturation',
+  // Renommé le 2026-10-28 (demande de Nadia) : les soins déjà enregistrés
+  // gardent l'ancien libellé « Biopulpectomie + Obturation ».
+  'Biopulpectomie',
   'Couronne céramo-métallique',
   'Parage canalaire',
   'Consultation',
@@ -53,6 +55,13 @@ const COMMON_ACTS = [
   'Endo',
   'Mise en forme',
   'Eugénate',
+  // Ajoutés le 2026-10-28 (demande de Nadia).
+  'Blanchiment',
+  'Empreinte secondaire',
+  'Empreinte d\'étude',
+  'CVI',
+  'Préparation',
+  'Scellement',
 ];
 
 const PAYMENT_MODES = [

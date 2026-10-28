@@ -49,11 +49,13 @@ const ABONNEMENT_MENU_VISIBLE = false;
 // aucune gestion — à construire plus tard.
 const SOINS_MENU_VISIBLE = false;
 
-// Réactivé (Nadia, 2026-09-21) : l'onglet Ordonnances avait été masqué le
-// 2026-08-29 à la demande de Nadia. Il est remis en place à l'occasion du
-// chantier Documents, qui réunit les ordonnances avec les 4 autres types de
-// documents dans une vue combinée (voir DocumentsPage.tsx).
-const ORDONNANCES_MENU_VISIBLE = true;
+// Masqué de nouveau (Nadia, 2026-10-28), avec Médicaments et Documents : pages
+// et données intactes (accessibles par leur adresse), l'onglet Ordonnances de
+// la fiche patient reste en place. Historique : masqué le 2026-08-29, réactivé
+// le 2026-09-21 pour le chantier Documents (voir DocumentsPage.tsx).
+const ORDONNANCES_MENU_VISIBLE = false;
+const MEDICAMENTS_MENU_VISIBLE = false;
+const DOCUMENTS_MENU_VISIBLE = false;
 
 // Masqué temporairement (Nadia, 2026-08-29) : la page Paramètres n'est encore qu'un
 // placeholder "Bientôt disponible" (configuration du cabinet, catalogue d'actes, types
@@ -243,6 +245,8 @@ export function AppLayout() {
         .filter((item) => ABONNEMENT_MENU_VISIBLE || item.to !== '/parametres/abonnement')
         .filter((item) => SOINS_MENU_VISIBLE || item.to !== '/treatments')
         .filter((item) => ORDONNANCES_MENU_VISIBLE || item.to !== '/prescriptions')
+        .filter((item) => MEDICAMENTS_MENU_VISIBLE || item.to !== '/medicaments')
+        .filter((item) => DOCUMENTS_MENU_VISIBLE || item.to !== '/documents')
         .filter((item) => RECALLS_MENU_VISIBLE || item.to !== '/recalls')
         .filter((item) => EQUIPE_MENU_VISIBLE || item.to !== '/equipe')
         .filter(canSee),

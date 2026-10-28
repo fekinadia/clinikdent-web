@@ -27,6 +27,11 @@ const CATEGORIES = [
   'Électricité / Eau',
   'Marketing',
   'Assurance',
+  // Ajoutées le 2026-10-28 (demande de Nadia) ; « Autre » reste en dernier.
+  'Prothésiste',
+  'Bâtiment',
+  'Personnel',
+  'Formation',
   'Autre',
 ];
 
