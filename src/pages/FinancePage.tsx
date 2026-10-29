@@ -63,7 +63,8 @@ function downloadCsv(filename: string, rows: string[][]) {
 }
 
 export function FinancePage() {
-  const [months, setMonths] = useState(12);
+  // « Ce mois » par défaut (demande de Nadia, 2026-10-29) ; avant : 12 mois.
+  const [months, setMonths] = useState(1);
   const [tab, setTab] = useState<'impayes' | 'encaissements'>('impayes');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');

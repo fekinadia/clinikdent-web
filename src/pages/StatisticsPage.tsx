@@ -40,7 +40,8 @@ function formatMonthLabel(mois: string) {
 }
 
 export function StatisticsPage() {
-  const [months, setMonths] = useState(6);
+  // « Ce mois » par défaut (demande de Nadia, 2026-10-29) ; avant : 6 mois.
+  const [months, setMonths] = useState(1);
 
   const { data: stats, isLoading } = useQuery<Stats>({
     queryKey: ['statistics-overview', months],
