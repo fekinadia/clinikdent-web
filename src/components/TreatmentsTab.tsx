@@ -129,12 +129,32 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
     if (window.confirm(message)) deleteActMutation.mutate(act.id);
   }
 
-  function handleDeletePayment(payment: ActPayment, act: TreatmentAct) {
+  function handleDeletePayment(payment: ActPayment, act: TreatmentAct, onDeleted?: () => void) {
     const message =
       `Supprimer l'encaissement de ${Number(payment.montant).toFixed(2)} DT du ` +
       `${format(new Date(payment.datePaiement), 'dd/MM/yy')} (${act.libelle}) ?` +
       `\n\nCe montant redeviendra dû par le patient.`;
-    if (window.confirm(message)) deletePaymentMutation.mutate(payment.id);
+    if (window.confirm(message)) deletePaymentMutation.mutate(payment.id, { onSuccess: onDeleted });
+  }
+
+  // Suppression depuis « Modifier la séance » (2026-10-29) : le backend baisse
+  // le Payé de l'acte du montant supprimé, on fait de même dans le formulaire
+  // pour qu'« Enregistrer » ne remette pas l'ancien chiffre.
+  function handleDeletePaymentWhileEditing(payment: ActPayment, act: TreatmentAct) {
+    handleDeletePayment(payment, act, () =>
+      setEditForm((f) =>
+        f
+          ? {
+              ...f,
+              acts: f.acts.map((a) =>
+                a.id === act.id
+                  ? { ...a, montantRecu: String(Math.max(0, Number(act.montantRecu) - Number(payment.montant))) }
+                  : a,
+              ),
+            }
+          : f,
+      ),
+    );
   }
 
   function startEditing(treatment: Treatment) {
@@ -197,6 +217,32 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
       }
     }
     return null;
+  }
+
+  // Payé corrigé au crayon et encaissements enregistrés (2026-10-29, après
+  // l'écart de 60 DT sur une couronne remise à 0 alors que la Caisse gardait
+  // le paiement). Seulement si le Payé de l'acte est modifié, comme côté
+  // backend (TreatmentsService.update, règle 3).
+  function encaisseDe(act: TreatmentAct) {
+    return (act.payments || []).reduce((s, p) => s + Number(p.montant), 0);
+  }
+
+  function compareToPayments(treatment: Treatment) {
+    let sousEncaisse: { libelle: string; deja: number } | null = null;
+    let horsCaisse: { libelle: string; ecart: number } | null = null;
+    for (const editingAct of editForm?.acts ?? []) {
+      const original = treatment.acts.find((a) => a.id === editingAct.id);
+      const nouveau = parseFloat(editingAct.montantRecu);
+      if (!original || Number.isNaN(nouveau)) continue;
+      const ancien = Number(original.montantRecu);
+      if (Math.abs(nouveau - ancien) < 0.0005) continue;
+      const deja = encaisseDe(original);
+      if (!sousEncaisse && nouveau < deja - 0.01) sousEncaisse = { libelle: original.libelle, deja };
+      if (!horsCaisse && nouveau > ancien && nouveau > deja + 0.01) {
+        horsCaisse = { libelle: original.libelle, ecart: nouveau - Math.max(deja, ancien) };
+      }
+    }
+    return { sousEncaisse, horsCaisse };
   }
 
   const updateMutation = useMutation({
@@ -358,6 +404,9 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                 const editingActsById = new Map((editForm?.acts || []).map((a) => [a.id, a]));
                 const costTooLow = isEditing ? findCostTooLow(treatment) : null;
                 const receivedTooHigh = isEditing ? findReceivedTooHigh(treatment) : null;
+                const { sousEncaisse, horsCaisse } = isEditing
+                  ? compareToPayments(treatment)
+                  : { sousEncaisse: null, horsCaisse: null };
 
                 return (
                   <Fragment key={treatment.id}>
@@ -470,6 +519,30 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                                 placeholder="Payé"
                                 title="Montant encaissé (DT)"
                               />
+                              {/* Tous les encaissements de l'acte, y compris le premier
+                                  (masqué hors modification), supprimables (2026-10-29). */}
+                              {(act.payments || []).length > 0 && (
+                                <ul className="mt-1 space-y-0.5">
+                                  {(act.payments || []).map((p) => (
+                                    <li
+                                      key={p.id}
+                                      className="flex items-center gap-1 text-[10px] text-slate-500 whitespace-nowrap"
+                                    >
+                                      {format(new Date(p.datePaiement), 'dd/MM/yy')} · {Number(p.montant).toFixed(2)}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeletePaymentWhileEditing(p, act)}
+                                        disabled={deletePaymentMutation.isPending}
+                                        className="text-slate-400 hover:text-rose-600 disabled:opacity-50"
+                                        title="Supprimer cet encaissement"
+                                        aria-label={`Supprimer l'encaissement du ${format(new Date(p.datePaiement), 'dd/MM/yy')}`}
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                             </td>
                             <td className="px-4 py-2 align-top text-right text-slate-400 text-sm">
                               {/* Reste = Total - Payé, recalculé automatiquement — non modifiable
@@ -635,6 +708,19 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                               prix ({receivedTooHigh.plafond.toFixed(2)} DT).
                             </p>
                           )}
+                          {sousEncaisse && (
+                            <p className="text-xs text-rose-600 mt-1.5">
+                              {sousEncaisse.deja.toFixed(2)} DT ont déjà été encaissés pour « {sousEncaisse.libelle} ».
+                              Pour annuler un encaissement, supprimez-le dans la liste sous « Encaissé » (icône
+                              corbeille) : le Payé et la Caisse se mettront à jour tout seuls.
+                            </p>
+                          )}
+                          {horsCaisse && (
+                            <p className="text-xs text-amber-700 mt-1.5">
+                              Les {horsCaisse.ecart.toFixed(2)} DT ajoutés à « {horsCaisse.libelle} » n'apparaîtront
+                              pas dans la Caisse. Pour enregistrer un vrai paiement, utilisez « Encaisser ».
+                            </p>
+                          )}
                           <div className="flex justify-end gap-2 mt-3">
                             <button
                               onClick={cancelEditing}
@@ -646,7 +732,7 @@ export function TreatmentsTab({ patientId }: TreatmentsTabProps) {
                             <button
                               onClick={() => updateMutation.mutate()}
                               className="btn-primary"
-                              disabled={updateMutation.isPending || !!costTooLow || !!receivedTooHigh}
+                              disabled={updateMutation.isPending || !!costTooLow || !!receivedTooHigh || !!sousEncaisse}
                             >
                               {updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
                             </button>
