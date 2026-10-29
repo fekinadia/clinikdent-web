@@ -125,7 +125,11 @@ export function LoginPage() {
             </button>
           </form>
 
-
+          {/* Mot de passe oublié (2026-10-29) : réinitialisation par l'administrateur
+              ClinikDent (Tous les comptes), l'app n'envoie pas d'e-mails. */}
+          <p className="text-xs text-slate-500 text-center mt-6">
+            Mot de passe oublié ? Contactez l'administrateur ClinikDent.
+          </p>
         </div>
       </div>
     </main>

@@ -634,6 +634,8 @@ export interface CreatedDemoAccount {
 export interface AllAccount {
   cabinetId: number;
   nomCabinet: string;
+  // Compte principal du cabinet, cible de « Réinitialiser le mot de passe » (2026-10-29).
+  userId: number | null;
   email: string | null;
   type: 'demo' | 'permanent';
   plan: string;
@@ -652,6 +654,11 @@ export const adminApi = {
   listAllAccounts: () => api.get<AllAccount[]>('/admin/accounts').then((r) => r.data),
   deleteAccount: (cabinetId: number) =>
     api.delete<{ success: boolean; cabinetId: number; nomCabinet: string }>(`/admin/accounts/${cabinetId}`).then((r) => r.data),
+  // Mot de passe oublié (2026-10-29) : renvoie un mot de passe temporaire, affiché une seule fois.
+  resetPassword: (userId: number) =>
+    api
+      .post<{ userId: number; email: string; tempPassword: string }>(`/admin/users/${userId}/reset-password`)
+      .then((r) => r.data),
 };
 
 // ===== EXPENSES (dépenses du cabinet) =====

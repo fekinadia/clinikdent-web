@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Check, Copy, KeyRound, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminApi } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
@@ -57,6 +57,38 @@ export function AllAccountsPage() {
     deleteMutation.mutate(cabinetId);
   };
 
+  // Mot de passe oublié (2026-10-29) : l'app n'envoie pas d'e-mails, on
+  // affiche un mot de passe temporaire à transmettre soi-même.
+  const [reinit, setReinit] = useState<{ nomCabinet: string; email: string; tempPassword: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const resetMutation = useMutation({
+    mutationFn: ({ userId }: { userId: number; nomCabinet: string }) => adminApi.resetPassword(userId),
+    onSuccess: (data, { nomCabinet }) => {
+      setCopied(false);
+      setReinit({ nomCabinet, email: data.email, tempPassword: data.tempPassword });
+      toast.success('Mot de passe réinitialisé');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Impossible de réinitialiser ce mot de passe');
+    },
+  });
+
+  const handleReset = (userId: number, nomCabinet: string, email: string | null) => {
+    const ok = window.confirm(
+      `Réinitialiser le mot de passe de ${email ?? 'ce compte'} (${nomCabinet}) ?\n\n` +
+        `Un mot de passe temporaire va être créé et l'ancien ne fonctionnera plus.`,
+    );
+    if (ok) resetMutation.mutate({ userId, nomCabinet });
+  };
+
+  const handleCopy = () => {
+    if (!reinit) return;
+    navigator.clipboard.writeText(`Email : ${reinit.email}\nMot de passe temporaire : ${reinit.tempPassword}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <>
       <header className="bg-white border-b border-slate-200 px-6 py-4">
@@ -67,6 +99,46 @@ export function AllAccountsPage() {
       </header>
 
       <div className="flex-1 overflow-auto p-6 animate-fade-in">
+        {reinit && (
+          <div className="card p-5 mb-4 border-primary-200 bg-primary-50/40">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <div className="text-sm font-semibold text-slate-700">
+                  Nouveau mot de passe temporaire pour {reinit.nomCabinet}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Copiez-le maintenant et transmettez-le à la personne : il ne sera plus jamais affiché. Elle pourra
+                  le changer depuis « Changer mon mot de passe » (icône clé en bas du menu).
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={handleCopy} className="btn-ghost flex items-center gap-1.5 text-sm">
+                  {copied ? <Check size={15} /> : <Copy size={15} />}
+                  {copied ? 'Copié' : 'Copier'}
+                </button>
+                <button
+                  onClick={() => setReinit(null)}
+                  className="btn-ghost !px-2"
+                  title="Fermer"
+                  aria-label="Fermer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="label">Email</div>
+                <div className="font-mono">{reinit.email}</div>
+              </div>
+              <div>
+                <div className="label">Mot de passe temporaire</div>
+                <div className="font-mono">{reinit.tempPassword}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="card p-5">
           {isLoading ? (
             <div className="flex justify-center py-10">
@@ -109,7 +181,18 @@ export function AllAccountsPage() {
                         <td className="py-2 pr-4">
                           <span className={`badge ${statutInfo.badge}`}>{statutInfo.label}</span>
                         </td>
-                        <td className="py-2 pr-4 text-right">
+                        <td className="py-2 pr-4 text-right whitespace-nowrap">
+                          {a.userId !== null && (
+                            <button
+                              onClick={() => handleReset(a.userId!, a.nomCabinet, a.email)}
+                              disabled={resetMutation.isPending}
+                              title="Réinitialiser le mot de passe"
+                              aria-label={`Réinitialiser le mot de passe de ${a.nomCabinet}`}
+                              className="text-slate-400 hover:text-primary-600 transition mr-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <KeyRound size={16} />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDelete(a.cabinetId, a.nomCabinet)}
                             disabled={isDeleting}
