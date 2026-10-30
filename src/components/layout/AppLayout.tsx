@@ -101,6 +101,8 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { to: '/patients', icon: Users, label: 'Patients' },
       { to: '/agenda', icon: Calendar, label: 'Agenda' },
       { to: '/salle-attente', icon: Armchair, label: "Salle d'attente" },
+      // Visible seul, hors du menu Automatisation qui reste masqué (2026-10-30).
+      { to: '/automatisation/rappels', icon: BellRing, label: 'Rappels WhatsApp', roles: ['admin', 'medecin', 'assistante', 'reception'] },
       { to: '/recalls', icon: BellRing, label: 'Patients à réactiver' },
     ],
   },
