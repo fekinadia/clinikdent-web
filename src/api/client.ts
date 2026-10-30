@@ -7,6 +7,12 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Page publique de réservation : sans jeton, et sans renvoi vers /login.
+export const apiPublic = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
+
 // Intercepteur : ajoute automatiquement le token JWT à chaque requête
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('clinikdent_token');

@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, apiPublic } from './client';
 import type {
   AuthResponse,
   Patient,
@@ -740,6 +740,87 @@ export const documentsApi = {
 // ===== CABINET (entête des documents imprimés) =====
 export const cabinetApi = {
   me: () => api.get<CabinetMe>('/cabinet/me').then((r) => r.data),
+};
+
+// ===== RÉSERVATION EN LIGNE (2026-10-30) =====
+export interface PlageHoraire {
+  debut: string;
+  fin: string;
+}
+
+/** Clés '0' (dimanche) à '6' (samedi) ; un jour absent est fermé. */
+export type HorairesReservation = Record<string, PlageHoraire[]>;
+
+export interface ReglagesReservation {
+  active: boolean;
+  slug: string;
+  horaires: HorairesReservation;
+  dureeCreneau: number;
+}
+
+export interface PatientTrouve {
+  id: number;
+  nom: string;
+  prenom: string;
+  numeroDossier: string;
+  gsm: string;
+}
+
+export interface DemandeRdv {
+  id: number;
+  prenom: string;
+  nom: string;
+  gsm: string;
+  motif: string | null;
+  langue: string;
+  dateDebut: string;
+  dateFin: string;
+  createdAt: string;
+  patientsTrouves: PatientTrouve[];
+}
+
+export const reservationApi = {
+  reglages: () => api.get<ReglagesReservation>('/reservation/reglages').then((r) => r.data),
+  modifierReglages: (data: ReglagesReservation) =>
+    api.patch<ReglagesReservation>('/reservation/reglages', data).then((r) => r.data),
+  demandes: () => api.get<DemandeRdv[]>('/reservation/demandes').then((r) => r.data),
+  compte: () => api.get<{ enAttente: number }>('/reservation/demandes/compte').then((r) => r.data),
+  confirmer: (id: number, patientId?: number) =>
+    api.post(`/reservation/demandes/${id}/confirmer`, { patientId }).then((r) => r.data),
+  refuser: (id: number) => api.post(`/reservation/demandes/${id}/refuser`).then((r) => r.data),
+};
+
+export interface CabinetPublic {
+  nom: string;
+  adresse: string | null;
+  telephone: string | null;
+  joursOuverts: number[];
+  aujourdhui: string;
+  dernierJour: string;
+}
+
+export interface NouvelleDemandeRdv {
+  prenom: string;
+  nom: string;
+  gsm: string;
+  motif?: string;
+  date: string;
+  heure: string;
+  langue: string;
+  siteWeb?: string;
+}
+
+export const reservationPublicApi = {
+  cabinet: (slug: string) =>
+    apiPublic.get<CabinetPublic>(`/public/cabinets/${encodeURIComponent(slug)}`).then((r) => r.data),
+  creneaux: (slug: string, date: string) =>
+    apiPublic
+      .get<{ date: string; heures: string[] }>(`/public/cabinets/${encodeURIComponent(slug)}/creneaux`, {
+        params: { date },
+      })
+      .then((r) => r.data),
+  envoyer: (slug: string, data: NouvelleDemandeRdv) =>
+    apiPublic.post(`/public/cabinets/${encodeURIComponent(slug)}/demandes`, data).then((r) => r.data),
 };
 
 // ===== ÉQUIPE (Phase 2, 2026-09-29) =====

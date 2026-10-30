@@ -21,8 +21,12 @@ export function LoginPage() {
       toast.success('Bienvenue !');
       navigate('/');
     },
-    onError: () => {
-      toast.error('Email ou mot de passe incorrect');
+    onError: (error: { response?: { status?: number } }) => {
+      toast.error(
+        error.response?.status === 429
+          ? 'Trop de tentatives. Réessayez dans une minute.'
+          : 'Email ou mot de passe incorrect',
+      );
     },
   });
 

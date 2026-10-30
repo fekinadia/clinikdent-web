@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
+  CalendarCheck,
   BellRing,
   Activity,
   FileText,
@@ -35,6 +36,7 @@ import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
+import { DemandesRdvBanner } from '@/components/DemandesRdvBanner';
 import type { Role } from '@/types';
 
 // Masqué temporairement dans le menu en attendant la validation Meta Tech Provider (Nadia, 2026-08-29).
@@ -74,6 +76,10 @@ const RECALLS_MENU_VISIBLE = false;
 // masqués ci-dessus.
 const EQUIPE_MENU_VISIBLE = false;
 
+// Masqué (2026-10-30) : page et contenu intacts, juste retirés du menu — même
+// pattern que les autres menus masqués ci-dessus.
+const GUIDE_MENU_VISIBLE = false;
+
 // Équipe & rôles (2026-09-29) : `roles` restreint l'affichage du lien côté
 // menu (confort d'usage — l'API refuse déjà les requêtes côté serveur,
 // voir la matrice dans claude/roadmap-parite-cabinet-care-2026-09-26.md).
@@ -100,6 +106,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
       { to: '/patients', icon: Users, label: 'Patients' },
       { to: '/agenda', icon: Calendar, label: 'Agenda' },
+      { to: '/reservation', icon: CalendarCheck, label: 'Réservation en ligne', roles: ['admin', 'medecin', 'assistante', 'reception'] },
       { to: '/salle-attente', icon: Armchair, label: "Salle d'attente" },
       // Visible seul, hors du menu Automatisation qui reste masqué (2026-10-30).
       { to: '/automatisation/rappels', icon: BellRing, label: 'Rappels WhatsApp', roles: ['admin', 'medecin', 'assistante', 'reception'] },
@@ -345,18 +352,20 @@ export function AppLayout() {
         </nav>
 
         <div className="px-3.5 pb-3 pt-2 border-t border-white/[0.06] space-y-0.5">
-          <NavLink
-            to="/guide"
-            onClick={() => setMobileMenuOpen(false)}
-            className={({ isActive }) => navLinkClasses(isActive)}
-          >
-            {({ isActive }) => (
-              <>
-                <IconBox Icon={BookOpen} active={isActive} />
-                Guide d'utilisation
-              </>
-            )}
-          </NavLink>
+          {GUIDE_MENU_VISIBLE && (
+            <NavLink
+              to="/guide"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) => navLinkClasses(isActive)}
+            >
+              {({ isActive }) => (
+                <>
+                  <IconBox Icon={BookOpen} active={isActive} />
+                  Guide d'utilisation
+                </>
+              )}
+            </NavLink>
+          )}
           {PARAMETRES_MENU_VISIBLE && (
             <NavLink
               to="/settings"
@@ -437,6 +446,7 @@ export function AppLayout() {
           </button>
           <span className="font-display font-semibold">ClinikDent</span>
         </div>
+        <DemandesRdvBanner />
         <Outlet />
       </main>
 

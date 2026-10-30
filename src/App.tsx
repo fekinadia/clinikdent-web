@@ -44,6 +44,8 @@ const ExpensesPage = lazy(() => import('@/pages/ExpensesPage').then((m) => ({ de
 const TeamPage = lazy(() => import('@/pages/TeamPage').then((m) => ({ default: m.TeamPage })));
 const DemoAccountsPage = lazy(() => import('@/pages/admin/DemoAccountsPage').then((m) => ({ default: m.DemoAccountsPage })));
 const AllAccountsPage = lazy(() => import('@/pages/admin/AllAccountsPage').then((m) => ({ default: m.AllAccountsPage })));
+const ReservationPage = lazy(() => import('@/pages/ReservationPage').then((m) => ({ default: m.ReservationPage })));
+const ReservationPublicPage = lazy(() => import('@/pages/ReservationPublicPage').then((m) => ({ default: m.ReservationPublicPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +79,7 @@ export function App() {
               path="/login"
               element={<PublicRoute><LoginPage /></PublicRoute>}
             />
+            <Route path="/rdv/:slug" element={<ReservationPublicPage />} />
 
             {/* Routes protégées */}
             <Route
@@ -88,6 +91,7 @@ export function App() {
               <Route path="patients/:id" element={<PatientDetailPage />} />
               <Route path="agenda" element={<AgendaPage />} />
               <Route path="salle-attente" element={<WaitingRoomPage />} />
+              <Route path="reservation" element={<ReservationPage />} />
               <Route path="caisse" element={<CaissePage />} />
               <Route path="guide" element={<GuidePage />} />
               <Route path="recalls" element={<RecallsPage />} />
