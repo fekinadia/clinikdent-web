@@ -46,6 +46,7 @@ const DemoAccountsPage = lazy(() => import('@/pages/admin/DemoAccountsPage').the
 const AllAccountsPage = lazy(() => import('@/pages/admin/AllAccountsPage').then((m) => ({ default: m.AllAccountsPage })));
 const ReservationPage = lazy(() => import('@/pages/ReservationPage').then((m) => ({ default: m.ReservationPage })));
 const ReservationPublicPage = lazy(() => import('@/pages/ReservationPublicPage').then((m) => ({ default: m.ReservationPublicPage })));
+const DecouvrirPage = lazy(() => import('@/pages/DecouvrirPage').then((m) => ({ default: m.DecouvrirPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,7 @@ export function App() {
               element={<PublicRoute><LoginPage /></PublicRoute>}
             />
             <Route path="/rdv/:slug" element={<ReservationPublicPage />} />
+            <Route path="/decouvrir" element={<DecouvrirPage />} />
 
             {/* Routes protégées */}
             <Route
