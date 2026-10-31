@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import {
   cabinetApi,
   DemandeRdv,
+  DemandeTraitee,
   HorairesReservation,
   reservationApi,
   ReglagesReservation,
@@ -29,9 +30,18 @@ import {
 type Onglet = 'demandes' | 'reglages';
 type Reponse = keyof typeof REPONSE_DEMANDE;
 
-interface AvertirPatient {
-  demande: DemandeRdv;
-  reponse: Reponse;
+// Seuls les numéros de demande restent dans ce navigateur, jamais le nom ou le
+// téléphone du patient.
+const CLE_PATIENTS_PREVENUS = 'clinikdent_demandes_prevenues';
+const PATIENTS_PREVENUS_MAX = 200;
+
+function lirePatientsPrevenus(): number[] {
+  try {
+    const ids = JSON.parse(localStorage.getItem(CLE_PATIENTS_PREVENUS) ?? '[]');
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
 }
 
 const JOURS: [string, string][] = [
@@ -46,7 +56,11 @@ const JOURS: [string, string][] = [
 
 const DUREES = [15, 20, 30, 45, 60];
 
-function messageReponse(demande: DemandeRdv, reponse: Reponse, cabinet?: CabinetInfo): string {
+function messageReponse(
+  demande: Omit<DemandeRdv, 'patientsTrouves'>,
+  reponse: Reponse,
+  cabinet?: CabinetInfo,
+): string {
   const langue: LangueMessage = demande.langue === 'ar' ? 'ar' : 'fr';
   const adresse = cabinet?.adresse ?? '';
   return remplirModele(REPONSE_DEMANDE[reponse][langue], {
@@ -117,7 +131,7 @@ export function ReservationPage() {
 
 function Demandes() {
   const queryClient = useQueryClient();
-  const [aAvertir, setAAvertir] = useState<AvertirPatient[]>([]);
+  const [patientsPrevenus, setPatientsPrevenus] = useState(lirePatientsPrevenus);
   const [dossiers, setDossiers] = useState<Record<number, number | undefined>>({});
 
   const { data: demandes = [], isLoading, isError } = useQuery({
@@ -125,19 +139,33 @@ function Demandes() {
     queryFn: reservationApi.demandes,
     refetchInterval: 60_000,
   });
+  const { data: traitees = [] } = useQuery({
+    queryKey: ['reservation-a-prevenir'],
+    queryFn: reservationApi.aPrevenir,
+  });
   const { data: cabinetMe } = useQuery({ queryKey: ['cabinet-me'], queryFn: cabinetApi.me });
 
   const rafraichir = () => {
     queryClient.invalidateQueries({ queryKey: ['reservation-demandes'] });
     queryClient.invalidateQueries({ queryKey: ['reservation-compte'] });
+    queryClient.invalidateQueries({ queryKey: ['reservation-a-prevenir'] });
+  };
+
+  const marquerPrevenu = (id: number) => {
+    const ids = [...patientsPrevenus, id].slice(-PATIENTS_PREVENUS_MAX);
+    setPatientsPrevenus(ids);
+    try {
+      localStorage.setItem(CLE_PATIENTS_PREVENUS, JSON.stringify(ids));
+    } catch {
+      // Stockage bloqué : la ligne disparaît quand même jusqu'au prochain chargement.
+    }
   };
 
   const confirmer = useMutation({
     mutationFn: ({ demande, patientId }: { demande: DemandeRdv; patientId?: number }) =>
       reservationApi.confirmer(demande.id, patientId),
-    onSuccess: (_resultat, { demande }) => {
+    onSuccess: () => {
       toast.success('Rendez-vous ajouté à l’agenda');
-      setAAvertir((liste) => [...liste, { demande, reponse: 'confirmee' }]);
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
       rafraichir();
@@ -150,9 +178,8 @@ function Demandes() {
 
   const refuser = useMutation({
     mutationFn: (demande: DemandeRdv) => reservationApi.refuser(demande.id),
-    onSuccess: (_resultat, demande) => {
+    onSuccess: () => {
       toast.success('Demande refusée, le créneau est de nouveau libre');
-      setAAvertir((liste) => [...liste, { demande, reponse: 'refusee' }]);
       rafraichir();
     },
     onError: (error) => {
@@ -163,23 +190,25 @@ function Demandes() {
 
   const enCours = confirmer.isPending || refuser.isPending;
   const cabinet = cabinetMe?.cabinet;
+  const aPrevenir = traitees.filter((demande: DemandeTraitee) => !patientsPrevenus.includes(demande.id));
 
   return (
     <div className="space-y-4">
-      {aAvertir.map(({ demande, reponse }) => (
+      {aPrevenir.map((demande) => (
         <div
           key={demande.id}
           className="flex items-center gap-3 flex-wrap rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
         >
           <span className="flex-1 min-w-[180px]">
-            {reponse === 'confirmee' ? 'Confirmé' : 'Refusé'} : prévenez <strong>{demande.prenom}</strong> sur WhatsApp
+            {demande.statut === 'confirmee' ? 'Confirmé' : 'Refusé'} : prévenez{' '}
+            <strong>{demande.prenom}</strong> sur WhatsApp
           </span>
           <a
-            href={lienWhatsApp(demande.gsm, messageReponse(demande, reponse, cabinet))}
+            href={lienWhatsApp(demande.gsm, messageReponse(demande, demande.statut, cabinet))}
             target="_blank"
             rel="noreferrer"
             className="btn-primary !py-1.5 !bg-emerald-600 hover:!bg-emerald-700"
-            onClick={() => setAAvertir((liste) => liste.filter((a) => a.demande.id !== demande.id))}
+            onClick={() => marquerPrevenu(demande.id)}
           >
             <MessageCircle size={16} /> Envoyer le message
           </a>
@@ -188,7 +217,7 @@ function Demandes() {
             className="btn-ghost !p-1.5"
             aria-label="Fermer sans envoyer"
             title="Fermer sans envoyer"
-            onClick={() => setAAvertir((liste) => liste.filter((a) => a.demande.id !== demande.id))}
+            onClick={() => marquerPrevenu(demande.id)}
           >
             <X size={16} />
           </button>
@@ -312,6 +341,7 @@ function Reglages() {
     mutationFn: (reglages: ReglagesReservation) => reservationApi.modifierReglages(reglages),
     onSuccess: (reglages) => {
       queryClient.setQueryData(['reservation-reglages'], reglages);
+      queryClient.invalidateQueries({ queryKey: ['cabinet-me'] });
       toast.success('Réglages enregistrés');
     },
     onError: (error) => {
@@ -324,8 +354,8 @@ function Reglages() {
     return <p className="text-sm text-rose-700">Impossible de charger les réglages. Réessayez dans un instant.</p>;
   }
 
-  const adresse = `${window.location.origin}/rdv/`;
-  const lien = `${adresse}${data?.slug ?? form.slug}`;
+  const debutLien = `${window.location.origin}/rdv/`;
+  const lien = `${debutLien}${data?.slug ?? form.slug}`;
   const modifierHoraires = (jour: string, plages: HorairesReservation[string]) => {
     const horaires = { ...form.horaires };
     if (plages.length > 0) horaires[jour] = plages;
@@ -368,7 +398,7 @@ function Reglages() {
           <div>
             <label htmlFor="reservation-slug" className="label">Adresse du lien</label>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-slate-500 break-all">{adresse}</span>
+              <span className="text-sm text-slate-500 break-all">{debutLien}</span>
               <input
                 id="reservation-slug"
                 className="input !w-auto flex-1 min-w-[160px]"
@@ -390,6 +420,35 @@ function Reglages() {
               </a>
             </div>
           )}
+        </section>
+
+        <section className="card p-4 space-y-3">
+          <div>
+            <label htmlFor="reservation-adresse" className="label">Adresse du cabinet</label>
+            <input
+              id="reservation-adresse"
+              className="input"
+              maxLength={300}
+              placeholder="Ex. : 12 avenue Habib Bourguiba, Tunis"
+              value={form.adresse}
+              onChange={(e) => setForm({ ...form, adresse: e.target.value })}
+            />
+          </div>
+          <div>
+            <label htmlFor="reservation-telephone" className="label">Téléphone du cabinet</label>
+            <input
+              id="reservation-telephone"
+              type="tel"
+              className="input"
+              maxLength={30}
+              placeholder="Ex. : 71 000 000"
+              value={form.telephone}
+              onChange={(e) => setForm({ ...form, telephone: e.target.value })}
+            />
+          </div>
+          <p className="text-xs text-slate-500">
+            Affichés sur la page patient, dans les messages WhatsApp et sur vos documents imprimés.
+          </p>
         </section>
 
         <section className="card p-4 space-y-3">

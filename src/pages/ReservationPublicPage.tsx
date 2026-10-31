@@ -305,6 +305,11 @@ export function ReservationPublicPage() {
                   </div>
 
                   <h2 className="font-semibold text-sm mt-4">{t.choisirHeure}</h2>
+                  {date && (
+                    <p className="text-sm text-primary-600 first-letter:uppercase">
+                      {formatJour(date, langue, { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </p>
+                  )}
                   {creneaux.isError ? (
                     <div className="mt-2">
                       <p className="text-sm text-slate-600">{t.erreur}</p>

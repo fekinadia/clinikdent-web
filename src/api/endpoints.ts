@@ -756,6 +756,8 @@ export interface ReglagesReservation {
   slug: string;
   horaires: HorairesReservation;
   dureeCreneau: number;
+  adresse: string;
+  telephone: string;
 }
 
 export interface PatientTrouve {
@@ -779,12 +781,15 @@ export interface DemandeRdv {
   patientsTrouves: PatientTrouve[];
 }
 
+export type DemandeTraitee = Omit<DemandeRdv, 'patientsTrouves'> & { statut: 'confirmee' | 'refusee' };
+
 export const reservationApi = {
   reglages: () => api.get<ReglagesReservation>('/reservation/reglages').then((r) => r.data),
   modifierReglages: (data: ReglagesReservation) =>
     api.patch<ReglagesReservation>('/reservation/reglages', data).then((r) => r.data),
   demandes: () => api.get<DemandeRdv[]>('/reservation/demandes').then((r) => r.data),
   compte: () => api.get<{ enAttente: number }>('/reservation/demandes/compte').then((r) => r.data),
+  aPrevenir: () => api.get<DemandeTraitee[]>('/reservation/demandes/a-prevenir').then((r) => r.data),
   confirmer: (id: number, patientId?: number) =>
     api.post(`/reservation/demandes/${id}/confirmer`, { patientId }).then((r) => r.data),
   refuser: (id: number) => api.post(`/reservation/demandes/${id}/refuser`).then((r) => r.data),
