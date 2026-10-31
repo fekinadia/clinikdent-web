@@ -518,6 +518,11 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: () => v
     onEdit();
   };
 
+  // Un prospect n'a pas encore de fiche : le clic ouvre son rendez-vous.
+  const handleOuvrir = (e: React.MouseEvent) => {
+    if (appt.patient?.estProspect) handleEdit(e);
+  };
+
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -530,6 +535,7 @@ function AppointmentBlock({ appt, onEdit }: { appt: Appointment; onEdit: () => v
   return (
     <Link
       to={`/patients/${appt.patientId}`}
+      onClick={handleOuvrir}
       className="group absolute left-0.5 right-0.5 top-0 rounded-md px-2 py-1 text-[11px] font-medium overflow-hidden cursor-pointer bg-white border border-slate-200 hover:z-10 hover:shadow-md transition-shadow"
       style={{
         height: `${height - 2}px`,

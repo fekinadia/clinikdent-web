@@ -49,6 +49,7 @@ export const patientsApi = {
     limit?: number;
     sortBy?: 'nom' | 'numeroDossier';
     sortOrder?: 'asc' | 'desc';
+    estProspect?: 'true' | 'false';
   }) => api.get<PaginatedPatients>('/patients', { params }).then((r) => r.data),
 
   get: (id: number) =>
@@ -766,6 +767,7 @@ export interface PatientTrouve {
   prenom: string;
   numeroDossier: string;
   gsm: string;
+  estProspect: boolean;
 }
 
 export interface DemandeRdv {

@@ -277,7 +277,7 @@ function Demandes() {
                       >
                         {demande.patientsTrouves.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.prenom} {p.nom} (dossier {p.numeroDossier})
+                            {p.prenom} {p.nom} ({p.estProspect ? 'prospect' : `dossier ${p.numeroDossier}`})
                           </option>
                         ))}
                         <option value="">Nouveau dossier pour {demande.prenom} {demande.nom}</option>

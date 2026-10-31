@@ -173,7 +173,7 @@ export function NewAppointmentDialog({
       });
     },
     onSuccess: () => {
-      toast.success(isNewPatient ? 'Patient et rendez-vous créés' : 'Rendez-vous créé');
+      toast.success('Rendez-vous créé');
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
       queryClient.invalidateQueries({ queryKey: ['patients-search'] });
@@ -439,6 +439,9 @@ export function NewAppointmentDialog({
               {isAppointmentEditMode ? (
                 <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-900">
                   {appointment?.patient?.prenom} {appointment?.patient?.nom}
+                  {appointment?.patient?.gsm && (
+                    <span className="font-normal text-slate-500"> · {appointment.patient.gsm}</span>
+                  )}
                 </div>
               ) : selectedPatient ? (
                 <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-4 py-2.5">

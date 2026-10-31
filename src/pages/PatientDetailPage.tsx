@@ -17,6 +17,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Spinner } from '@/components/ui/Spinner';
 import { ToothChart } from '@/components/patients/ToothChart';
 import { EncaissementsJournal } from '@/components/patients/EncaissementsJournal';
+import { ProspectSansFiche } from '@/components/patients/ProspectSansFiche';
 import { calculateAge, formatDate, formatDateShort, formatMoney } from '@/lib/utils';
 
 // Masqué temporairement (Nadia, 2026-08-29) : à la demande de Nadia, l'onglet Ordonnances
@@ -66,6 +67,7 @@ export function PatientDetailPage() {
   });
 
   if (isLoading || !patient) return <div className="p-12"><Spinner /></div>;
+  if (patient.estProspect && !patient.treatments?.length) return <ProspectSansFiche patient={patient} />;
 
   const age = calculateAge(patient.dateNaissance);
 

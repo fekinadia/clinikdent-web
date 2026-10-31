@@ -84,7 +84,7 @@ export interface Appointment {
   // Salle d'attente (2026-09-26) : posés automatiquement par le backend.
   heureArrivee?: string | null;
   heureEntree?: string | null;
-  patient?: Pick<Patient, 'id' | 'nom' | 'prenom' | 'gsm'>;
+  patient?: Pick<Patient, 'id' | 'nom' | 'prenom' | 'gsm' | 'estProspect'>;
   type?: AppointmentType;
   medecin?: { id: number; nom: string; prenom: string } | null;
 }

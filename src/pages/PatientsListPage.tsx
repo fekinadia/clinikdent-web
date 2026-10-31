@@ -29,7 +29,7 @@ export function PatientsListPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['patients', search, page, sort],
-    queryFn: () => patientsApi.list({ search, page, limit: 20, sortBy, sortOrder }),
+    queryFn: () => patientsApi.list({ search, page, limit: 20, sortBy, sortOrder, estProspect: 'false' }),
   });
 
   return (
