@@ -14,13 +14,13 @@ export const RAPPEL_PAR_DEFAUT: Record<LangueMessage, string> = {
   fr:
     'Bonjour {{prenom}},\n' +
     'Nous vous rappelons votre rendez-vous du {{date}} à {{heure}} chez {{cabinet}}.\n' +
-    '📍 {{adresse}}\n' +
+    'Adresse : {{adresse}}\n' +
     '{{carte}}\n' +
     'Merci de nous prévenir si vous ne pouvez pas venir. À bientôt !',
   ar:
     'مرحبا {{prenom}}،\n' +
     'نذكّرك بموعدك يوم {{date}} على الساعة {{heure}} في {{cabinet}}.\n' +
-    '📍 {{adresse}}\n' +
+    'العنوان: {{adresse}}\n' +
     '{{carte}}\n' +
     'يرجى إعلامنا إذا لم تتمكن من الحضور. شكرا!',
 };
@@ -35,13 +35,13 @@ export const REPONSE_DEMANDE: Record<'question' | 'confirmee' | 'refusee', Recor
     fr:
       'Bonjour {{prenom}},\n' +
       'Votre rendez-vous du {{date}} à {{heure}} chez {{cabinet}} est confirmé.\n' +
-      '📍 {{adresse}}\n' +
+      'Adresse : {{adresse}}\n' +
       '{{carte}}\n' +
       'À bientôt !',
     ar:
       'مرحبا {{prenom}}،\n' +
       'تم تأكيد موعدك يوم {{date}} على الساعة {{heure}} في {{cabinet}}.\n' +
-      '📍 {{adresse}}\n' +
+      'العنوان: {{adresse}}\n' +
       '{{carte}}\n' +
       'إلى اللقاء!',
   },
