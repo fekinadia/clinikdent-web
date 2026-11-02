@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, MessageCircle } from 'lucide-react';
 import { lienWhatsApp, NUMERO_CONTACT } from '@/lib/whatsappRappel';
 
 // Page de présentation de ClinikDent (2026-11-01), publique : c'est l'étape
 // entre les posts et la démo. Les captures de public/presentation viennent d'un
 // cabinet fictif, jamais de vraies données.
 
-const MESSAGE_CONTACT = 'Bonjour, je suis dentiste et je voudrais en savoir plus sur ClinikDent.';
+const MESSAGE_CONTACT = 'Bonjour, je suis dentiste et je voudrais essayer ClinikDent gratuitement.';
 const LIEN_CONTACT = lienWhatsApp(NUMERO_CONTACT, MESSAGE_CONTACT);
 
 const IMAGES = '/presentation';
@@ -70,6 +70,19 @@ const QUESTIONS = [
   },
 ];
 
+function BoutonWhatsApp({ className = '' }: { className?: string }) {
+  return (
+    <a
+      href={LIEN_CONTACT}
+      target="_blank"
+      rel="noreferrer"
+      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-emerald-700 ${className}`}
+    >
+      <MessageCircle size={20} aria-hidden="true" /> Demander une démo sur WhatsApp
+    </a>
+  );
+}
+
 function BoutonEssai({ className = '' }: { className?: string }) {
   return (
     <Link
@@ -81,16 +94,12 @@ function BoutonEssai({ className = '' }: { className?: string }) {
   );
 }
 
-function LienWhatsApp({ className = '' }: { className?: string }) {
+function Boutons({ className = '' }: { className?: string }) {
   return (
-    <a
-      href={LIEN_CONTACT}
-      target="_blank"
-      rel="noreferrer"
-      className={`inline-block text-sm underline underline-offset-4 ${className}`}
-    >
-      Une question ? Écrivez-nous sur WhatsApp
-    </a>
+    <div className={`flex flex-col gap-3 sm:flex-row ${className}`}>
+      <BoutonEssai className="w-full sm:w-auto" />
+      <BoutonWhatsApp className="w-full sm:w-auto" />
+    </div>
   );
 }
 
@@ -155,12 +164,11 @@ export function DecouvrirPage() {
             Pensé pour les cabinets tunisiens, en dinars.
           </p>
           <div className="mt-7">
-            <BoutonEssai className="w-full sm:w-auto" />
+            <Boutons />
             <p className="mt-3 text-sm text-white/70">
               Tout de suite : 7 jours avec des patients fictifs · Avec une démo : 1 mois gratuit, sans engagement,
               installation avec vous
             </p>
-            <LienWhatsApp className="mt-3 text-white/90 hover:text-white" />
           </div>
         </div>
 
@@ -255,10 +263,7 @@ export function DecouvrirPage() {
           <p className="mt-10 text-lg text-slate-600">
             Envie de voir d’abord par vous-même ? L’essai de 7 jours s’ouvre tout de suite, avec des patients fictifs.
           </p>
-          <BoutonEssai className="mt-4 w-full sm:w-auto" />
-          <div>
-            <LienWhatsApp className="mt-3 text-primary-500 hover:text-primary-700" />
-          </div>
+          <Boutons className="mt-4" />
         </section>
 
         <section className="bg-slate-50">
@@ -279,15 +284,21 @@ export function DecouvrirPage() {
       <footer className="bg-primary-950 px-4 py-14 text-center text-white sm:px-6">
         <p className="mx-auto max-w-2xl font-display text-3xl font-semibold">Essayez ClinikDent dans votre cabinet</p>
         <p className="mt-3 text-white/70">7 jours tout de suite, ou un mois gratuit avec une démo.</p>
-        <BoutonEssai className="mt-6 w-full sm:w-auto" />
-        <div>
-          <LienWhatsApp className="mt-3 text-white/90 hover:text-white" />
-        </div>
+        <Boutons className="mt-6 sm:justify-center" />
         <p className="mt-8 text-sm text-white/50">Captures réalisées sur un cabinet fictif.</p>
       </footer>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-3 sm:hidden">
-        <BoutonEssai className="w-full" />
+      <div className="fixed inset-x-0 bottom-0 flex gap-2 border-t border-slate-200 bg-white p-3 sm:hidden">
+        <BoutonEssai className="flex-1" />
+        <a
+          href={LIEN_CONTACT}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Demander une démo sur WhatsApp"
+          className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 text-white transition-colors hover:bg-emerald-700"
+        >
+          <MessageCircle size={22} aria-hidden="true" />
+        </a>
       </div>
     </div>
   );
