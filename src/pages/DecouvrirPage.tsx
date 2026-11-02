@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
+import { ArrowRight, MessageCircle } from 'lucide-react';
 import { lienWhatsApp, NUMERO_CONTACT } from '@/lib/whatsappRappel';
 
 // Page de présentation de ClinikDent (2026-11-01), publique : c'est l'étape
@@ -34,6 +34,11 @@ const ETAPES = [
 ];
 
 const QUESTIONS = [
+  {
+    question: 'Quelle différence entre l’essai de 7 jours et le test d’un mois ?',
+    reponse:
+      'L’essai de 7 jours s’ouvre tout de suite, seul, avec des patients fictifs : c’est pour découvrir ClinikDent. Le test d’un mois se fait avec vos vrais patients, après une démo et une installation avec vous.',
+  },
   {
     question: 'Combien ça coûte ?',
     reponse:
@@ -73,8 +78,28 @@ function BoutonWhatsApp({ className = '' }: { className?: string }) {
       rel="noreferrer"
       className={`inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-emerald-700 ${className}`}
     >
-      <MessageCircle size={20} aria-hidden="true" /> Essayer gratuitement sur WhatsApp
+      <MessageCircle size={20} aria-hidden="true" /> Demander une démo sur WhatsApp
     </a>
+  );
+}
+
+function BoutonEssai({ className = '' }: { className?: string }) {
+  return (
+    <Link
+      to="/essai"
+      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-5 py-3 font-semibold text-primary-950 transition-colors hover:bg-accent-300 ${className}`}
+    >
+      Essayer tout de suite <ArrowRight size={20} aria-hidden="true" />
+    </Link>
+  );
+}
+
+function Boutons({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex flex-col gap-3 sm:flex-row ${className}`}>
+      <BoutonEssai className="w-full sm:w-auto" />
+      <BoutonWhatsApp className="w-full sm:w-auto" />
+    </div>
   );
 }
 
@@ -139,8 +164,11 @@ export function DecouvrirPage() {
             Pensé pour les cabinets tunisiens, en dinars.
           </p>
           <div className="mt-7">
-            <BoutonWhatsApp className="w-full sm:w-auto" />
-            <p className="mt-3 text-sm text-white/70">1 mois gratuit · sans engagement · installation avec vous</p>
+            <Boutons />
+            <p className="mt-3 text-sm text-white/70">
+              Tout de suite : 7 jours avec des patients fictifs · Avec une démo : 1 mois gratuit, sans engagement,
+              installation avec vous
+            </p>
           </div>
         </div>
 
@@ -232,7 +260,10 @@ export function DecouvrirPage() {
               </li>
             ))}
           </ol>
-          <BoutonWhatsApp className="mt-10 w-full sm:w-auto" />
+          <p className="mt-10 text-lg text-slate-600">
+            Envie de voir d’abord par vous-même ? L’essai de 7 jours s’ouvre tout de suite, avec des patients fictifs.
+          </p>
+          <Boutons className="mt-4" />
         </section>
 
         <section className="bg-slate-50">
@@ -252,13 +283,22 @@ export function DecouvrirPage() {
 
       <footer className="bg-primary-950 px-4 py-14 text-center text-white sm:px-6">
         <p className="mx-auto max-w-2xl font-display text-3xl font-semibold">Essayez ClinikDent dans votre cabinet</p>
-        <p className="mt-3 text-white/70">Un mois gratuit, sans engagement.</p>
-        <BoutonWhatsApp className="mt-6 w-full sm:w-auto" />
+        <p className="mt-3 text-white/70">7 jours tout de suite, ou un mois gratuit avec une démo.</p>
+        <Boutons className="mt-6 sm:justify-center" />
         <p className="mt-8 text-sm text-white/50">Captures réalisées sur un cabinet fictif.</p>
       </footer>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-3 sm:hidden">
-        <BoutonWhatsApp className="w-full" />
+      <div className="fixed inset-x-0 bottom-0 flex gap-2 border-t border-slate-200 bg-white p-3 sm:hidden">
+        <BoutonEssai className="flex-1" />
+        <a
+          href={LIEN_CONTACT}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Demander une démo sur WhatsApp"
+          className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 text-white transition-colors hover:bg-emerald-700"
+        >
+          <MessageCircle size={22} aria-hidden="true" />
+        </a>
       </div>
     </div>
   );
