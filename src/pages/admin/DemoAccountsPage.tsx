@@ -65,7 +65,7 @@ export function DemoAccountsPage() {
     if (!created) return;
     const validite =
       created.type === 'permanent'
-        ? `Essai gratuit jusqu'au ${formatDate(created.trialEndsAt)} (14 jours)`
+        ? `Essai gratuit jusqu'au ${formatDate(created.trialEndsAt)} (1 mois)`
         : `Valable jusqu'au ${formatDate(created.demoExpiresAt)} (24h)`;
     const text = `Email : ${created.email}\nMot de passe : ${created.password}\n${validite}`;
     navigator.clipboard.writeText(text);
@@ -81,7 +81,7 @@ export function DemoAccountsPage() {
           Nouveaux comptes
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Créer un accès de test (24h) ou un vrai compte client (essai 14 jours)
+          Créer un accès de test (24h) ou un vrai compte client (essai d'un mois)
         </p>
       </header>
 
@@ -108,7 +108,7 @@ export function DemoAccountsPage() {
                     checked={form.type === 'permanent'}
                     onChange={() => setForm({ ...form, type: 'permanent' })}
                   />
-                  Client permanent (essai de 14 jours, compte normal)
+                  Client permanent (essai d'un mois, compte normal)
                 </label>
               </div>
             </div>
