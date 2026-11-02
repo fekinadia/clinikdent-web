@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
 import { authApi } from '@/api/endpoints';
 import { useAuthStore } from '@/lib/auth-store';
+import { NUMERO_CONTACT } from '@/lib/whatsappRappel';
 import { Spinner } from '@/components/ui/Spinner';
 
 export function LoginPage() {
@@ -22,10 +23,13 @@ export function LoginPage() {
       navigate('/');
     },
     onError: (error: { response?: { status?: number } }) => {
+      const statut = error.response?.status;
       toast.error(
-        error.response?.status === 429
+        statut === 429
           ? 'Trop de tentatives. Réessayez dans une minute.'
-          : 'Email ou mot de passe incorrect',
+          : statut === 403
+            ? `Votre période d'essai est terminée. Pour continuer, écrivez-nous sur WhatsApp au ${NUMERO_CONTACT}.`
+            : 'Email ou mot de passe incorrect',
       );
     },
   });

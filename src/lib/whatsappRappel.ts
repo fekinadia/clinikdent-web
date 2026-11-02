@@ -57,6 +57,9 @@ export const REPONSE_DEMANDE: Record<'question' | 'confirmee' | 'refusee', Recor
   },
 };
 
+/** Numéro de ClinikDent, celui que les médecins contactent. */
+export const NUMERO_CONTACT = '29270124';
+
 /** Même règle que les liens WhatsApp de Recalls et Finance : numéro tunisien → 216XXXXXXXX. */
 export function normaliserGsm(gsm: string): string {
   let digits = gsm.replace(/\D/g, '');

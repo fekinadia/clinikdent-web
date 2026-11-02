@@ -612,11 +612,30 @@ export const caisseApi = {
     api.patch(`/finance/cheques/${id}`, { encaisse, dateEncaissement }).then((r) => r.data),
 };
 
+// ===== ESSAI EN UN CLIC (page publique) =====
+export interface EssaiCree extends AuthResponse {
+  email: string;
+  motDePasse: string;
+  expireLe: string;
+}
+
+export const essaiApi = {
+  creer: (data: {
+    prenom: string;
+    nom: string;
+    nomCabinet: string;
+    gsm: string;
+    siteWeb?: string;
+  }) => apiPublic.post<EssaiCree>('/public/essai', data).then((r) => r.data),
+};
+
 // ===== ADMIN (comptes démo et clients) =====
 export interface DemoAccount {
   cabinetId: number;
   nomCabinet: string;
   email: string | null;
+  medecin: string | null;
+  telephone: string | null;
   createdAt: string;
   demoExpiresAt: string | null;
   expired: boolean;

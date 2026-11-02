@@ -1,13 +1,12 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
-import { lienWhatsApp } from '@/lib/whatsappRappel';
+import { lienWhatsApp, NUMERO_CONTACT } from '@/lib/whatsappRappel';
 
 // Page de présentation de ClinikDent (2026-11-01), publique : c'est l'étape
 // entre les posts et la démo. Les captures de public/presentation viennent d'un
 // cabinet fictif, jamais de vraies données.
 
-const NUMERO_CONTACT = '29270124';
 const MESSAGE_CONTACT = 'Bonjour, je suis dentiste et je voudrais essayer ClinikDent gratuitement.';
 const LIEN_CONTACT = lienWhatsApp(NUMERO_CONTACT, MESSAGE_CONTACT);
 

@@ -7,8 +7,11 @@ import { adminApi, CreatedDemoAccount } from '@/api/endpoints';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth-store';
+import { lienWhatsApp } from '@/lib/whatsappRappel';
 
 type AccountType = 'demo' | 'permanent';
+
+const MESSAGE_SUIVI = 'Bonjour, ici ClinikDent. Comment se passe votre essai ?';
 
 export function DemoAccountsPage() {
   const user = useAuthStore((s) => s.user);
@@ -210,43 +213,62 @@ export function DemoAccountsPage() {
           ) : !accounts || accounts.length === 0 ? (
             <p className="text-sm text-slate-400">Aucun compte démo créé pour l'instant.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
-                  <th className="pb-2 font-medium">Cabinet</th>
-                  <th className="pb-2 font-medium">Email</th>
-                  <th className="pb-2 font-medium">Créé le</th>
-                  <th className="pb-2 font-medium">Expire le</th>
-                  <th className="pb-2 font-medium">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map((acc) => (
-                  <tr key={acc.cabinetId} className="border-b border-slate-50 last:border-0">
-                    <td className="py-2.5">{acc.nomCabinet}</td>
-                    <td className="py-2.5 font-mono text-xs">{acc.email ?? '—'}</td>
-                    <td className="py-2.5 text-slate-500">{formatDate(acc.createdAt)}</td>
-                    <td className="py-2.5 text-slate-500">
-                      {acc.demoExpiresAt ? formatDate(acc.demoExpiresAt) : '—'}
-                    </td>
-                    <td className="py-2.5">
-                      <span className={`badge ${acc.expired ? 'badge-danger' : 'badge-success'}`}>
-                        {acc.expired ? (
-                          <span className="flex items-center gap-1">
-                            <Clock size={11} /> Expiré
-                          </span>
-                        ) : (
-                          'Actif'
-                        )}
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                    <th className="pb-2 pr-3 font-medium">Cabinet</th>
+                    <th className="pb-2 pr-3 font-medium">Médecin</th>
+                    <th className="pb-2 pr-3 font-medium">WhatsApp</th>
+                    <th className="pb-2 pr-3 font-medium">Email</th>
+                    <th className="pb-2 pr-3 font-medium">Créé le</th>
+                    <th className="pb-2 pr-3 font-medium">Expire le</th>
+                    <th className="pb-2 font-medium">Statut</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {accounts.map((acc) => (
+                    <tr key={acc.cabinetId} className="border-b border-slate-50 last:border-0">
+                      <td className="py-2.5 pr-3">{acc.nomCabinet}</td>
+                      <td className="py-2.5 pr-3 whitespace-nowrap">{acc.medecin ?? '—'}</td>
+                      <td className="py-2.5 pr-3 whitespace-nowrap">
+                        {acc.telephone ? (
+                          <a
+                            href={lienWhatsApp(acc.telephone, MESSAGE_SUIVI)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-emerald-700 font-medium"
+                          >
+                            +{acc.telephone}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-2.5 pr-3 font-mono text-xs">{acc.email ?? '—'}</td>
+                      <td className="py-2.5 pr-3 text-slate-500">{formatDate(acc.createdAt)}</td>
+                      <td className="py-2.5 pr-3 text-slate-500">
+                        {acc.demoExpiresAt ? formatDate(acc.demoExpiresAt) : '—'}
+                      </td>
+                      <td className="py-2.5">
+                        <span className={`badge ${acc.expired ? 'badge-danger' : 'badge-success'}`}>
+                          {acc.expired ? (
+                            <span className="flex items-center gap-1">
+                              <Clock size={11} /> Expiré
+                            </span>
+                          ) : (
+                            'Actif'
+                          )}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           <p className="text-xs text-slate-400 mt-3">
-            Seuls les comptes démo (24h) apparaissent dans cette liste.
+            Comptes démo (24h) et essais en un clic (7 jours, créés depuis /essai).
           </p>
         </div>
       </div>

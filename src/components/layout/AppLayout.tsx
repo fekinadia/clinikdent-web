@@ -233,6 +233,8 @@ function NavGroup({
 
 export function AppLayout() {
   const { user, logout } = useAuthStore();
+  // L'adresse d'un essai en un clic est technique : le médecin n'a pas à la voir ici.
+  const nomCompte = user?.email?.endsWith('@essai.invalid') ? 'Compte d’essai' : user?.email;
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -425,11 +427,11 @@ export function AppLayout() {
             className="w-full flex items-center gap-2.5 bg-white/5 border border-white/[0.07] rounded-2xl px-3 py-2.5 hover:bg-white/[0.08] transition-colors text-left"
           >
             <div className="w-[34px] h-[34px] rounded-[10px] bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0">
-              {user?.email?.[0]?.toUpperCase()}
+              {nomCompte?.[0]?.toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-white text-[12px] font-semibold truncate">
-                {user?.email}
+                {nomCompte}
               </div>
               <div className="text-[#5b7186] text-[10.5px]">{ROLE_LABELS[user?.role || 'medecin']}</div>
             </div>
