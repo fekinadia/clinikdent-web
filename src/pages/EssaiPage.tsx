@@ -256,7 +256,10 @@ export function EssaiPage() {
               )}
               <p className="text-xs text-slate-500">
                 Votre nom et votre numéro servent uniquement à cet essai et à vous recontacter.
-                Les patients affichés sont inventés : n’ajoutez pas de vrais patients.
+                Les patients affichés sont inventés : n’ajoutez pas de vrais patients.{' '}
+                <Link to="/securite" className="underline">
+                  Sécurité et données
+                </Link>
               </p>
             </form>
 

@@ -30,7 +30,10 @@ const PROBLEMES = [
 const ETAPES = [
   { titre: 'Une démo de 10 minutes', texte: 'Je vous montre ClinikDent dans votre cabinet.' },
   { titre: 'L’installation avec vous', texte: 'Compte, tarifs et premiers patients : on le fait ensemble.' },
-  { titre: 'Un mois pour essayer', texte: 'Gratuit et sans engagement. Vous gardez vos fiches pendant le test.' },
+  {
+    titre: 'Un mois pour essayer',
+    texte: 'Gratuit et sans engagement, en gardant vos fiches. Ensuite, 90 DT par mois si vous continuez.',
+  },
 ];
 
 const QUESTIONS = [
@@ -42,7 +45,7 @@ const QUESTIONS = [
   {
     question: 'Combien ça coûte ?',
     reponse:
-      'Le test d’un mois est gratuit et sans engagement. On parle du prix à la fin, et vous restez libre de dire non.',
+      'Le test d’un mois est gratuit et sans engagement. Ensuite, c’est 90 DT par mois, et vous restez libre d’arrêter quand vous voulez.',
   },
   {
     question: 'Mes données sont-elles en sécurité ?',
@@ -277,6 +280,12 @@ export function DecouvrirPage() {
                 </details>
               ))}
             </div>
+            <Link
+              to="/securite"
+              className="mt-6 inline-flex items-center gap-2 font-semibold text-primary-500 hover:text-primary-700"
+            >
+              Tout savoir sur la sécurité et vos données <ArrowRight size={18} aria-hidden="true" />
+            </Link>
           </div>
         </section>
       </main>
@@ -285,7 +294,12 @@ export function DecouvrirPage() {
         <p className="mx-auto max-w-2xl font-display text-3xl font-semibold">Essayez ClinikDent dans votre cabinet</p>
         <p className="mt-3 text-white/70">7 jours tout de suite, ou un mois gratuit avec une démo.</p>
         <Boutons className="mt-6 sm:justify-center" />
-        <p className="mt-8 text-sm text-white/50">Captures réalisées sur un cabinet fictif.</p>
+        <p className="mt-8 text-sm text-white/50">
+          Captures réalisées sur un cabinet fictif ·{' '}
+          <Link to="/securite" className="underline hover:text-white">
+            Sécurité et données
+          </Link>
+        </p>
       </footer>
 
       <div className="fixed inset-x-0 bottom-0 flex gap-2 border-t border-slate-200 bg-white p-3 sm:hidden">
