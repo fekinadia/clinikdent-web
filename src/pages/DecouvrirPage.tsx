@@ -28,8 +28,11 @@ const PROBLEMES = [
 ];
 
 const ETAPES = [
-  { titre: 'Une démo de 10 minutes', texte: 'Je vous montre ClinikDent dans votre cabinet.' },
-  { titre: 'L’installation avec vous', texte: 'Compte, tarifs et premiers patients : on le fait ensemble.' },
+  { titre: 'Une démo de 10 minutes', texte: 'Je vous montre ClinikDent par appel vidéo WhatsApp.' },
+  {
+    titre: 'L’installation avec vous',
+    texte: 'Compte, tarifs et premiers patients : on le fait ensemble, à distance.',
+  },
   {
     titre: 'Un mois pour essayer',
     texte: 'Gratuit et sans engagement, en gardant vos fiches. Ensuite, 90 DT par mois si vous continuez.',
